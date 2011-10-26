@@ -2,6 +2,8 @@ package ar.edu.itba.pod.legajo50272;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashSet;
 import java.util.Set;
@@ -12,9 +14,12 @@ import ar.edu.itba.node.api.ClusterAdministration;
 public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 		ClusterAdministration {
 
+	// The information of the current node
 	private NodeInformation nodeInformation;
-	private String groupId = null;
+	// The rest of the nodes that the current node is connected to
 	private Set<NodeInformation> connectedNodes = new HashSet<NodeInformation>();
+	private String groupId = null;
+
 
 	public ClusterAdministrationImpl(NodeInformation nodeInformation)
 			throws RemoteException {
@@ -42,7 +47,13 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 	@Override
 	public void connectToGroup(String host, int port) throws RemoteException,
 			NotBoundException {
-		// TODO Auto-generated method stub
+		try {
+			Registry registry = LocateRegistry.getRegistry(host, port);
+			ClusterAdministration cluster = (ClusterAdministration) registry.lookup("ClusterAdministration");
+			this.connectedNodes = cluster.addNewNode(nodeInformation);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 	}
 
