@@ -4,6 +4,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -14,14 +15,15 @@ import ar.edu.itba.event.RemoteEventDispatcher;
 import ar.edu.itba.node.NodeInformation;
 import ar.edu.itba.pod.agent.runner.Agent;
 
-public class RemoteEventDispatcherImpl implements RemoteEventDispatcher {
+public class RemoteEventDispatcherImpl extends UnicastRemoteObject implements RemoteEventDispatcher {
 
 	// The events for the current node
 	private BlockingQueue<EventInformation> events = new LinkedBlockingQueue<EventInformation>();
 	// The current node information
 	private NodeInformation nodeInformation;
 
-	public RemoteEventDispatcherImpl(NodeInformation nodeInformation) {
+	public RemoteEventDispatcherImpl(NodeInformation nodeInformation) throws RemoteException {
+		super();
 		this.nodeInformation = nodeInformation;
 	}
 
