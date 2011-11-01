@@ -1,39 +1,33 @@
 package ar.edu.itba.pod.legajo50272;
 
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.joda.time.Duration;
 
-import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.NodeAgent;
-import ar.edu.itba.node.Node;
 import ar.edu.itba.pod.agent.runner.Agent;
 import ar.edu.itba.pod.agent.runner.Simulation;
 import ar.edu.itba.pod.multithread.EventDispatcher;
 import ar.edu.itba.pod.multithread.LocalSimulation;
-import ar.edu.itba.pod.time.TimeMapper;
 
 public class RemoteSimulation extends LocalSimulation implements Simulation {
 
-	private AgentsBalancer agentsBalancer;
-	private RemoteEventDispatcherImpl remoteEventDispatcher;
 	
+	// The current node
+	private NodeImpl node;	
+	private BlockingQueue<NodeAgent> agents;
 	
-	public RemoteSimulation(TimeMapper timeMapper){
-		super(timeMapper);
-		try {
-			Registry registry = LocateRegistry.getRegistry("localhost");
-			agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	public RemoteSimulation(NodeImpl node){
+		super(node.getTimeMapper());
+		this.node = node;
+		this.agents = new LinkedBlockingQueue<NodeAgent>();
 	}
 	
 	@Override
 	public EventDispatcher dispatcher() {
-		return this.remoteEventDispatcher;
+		return (EventDispatcher)node.getRemoteEventDispatcher();
 	}
 	
 	@Override
@@ -42,12 +36,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 			System.out.println("Agent cannot be null");
 			return;
 		}
-		NodeAgent nodeAgent = new NodeAgent(null, agent);
-		try {
-			agentsBalancer.addAgentToCluster(nodeAgent);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}		
+		agents.add(new NodeAgent(null, agent));
 	}
 
 	@Override
@@ -56,10 +45,18 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 		
 	}
 
+	
+	// ¿Getters para los variables de LocalSimulation?
 	@Override
 	public void start(Duration duration) {
-		// TODO Auto-generated method stub
-		
+		synchronized (agents) {
+			for(NodeAgent agent: agents)
+				try {
+					node.getAgentsBalancer().addAgentToCluster(agent);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+		}	
 	}
 
 	@Override

@@ -1,5 +1,6 @@
 package ar.edu.itba.pod.legajo50272;
 
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -17,16 +18,12 @@ import ar.edu.itba.node.NodeInformation;
 public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		AgentsBalancer {
 
-	private AgentsTransfer agentsTransfer;
-
-	protected AgentsBalancerImpl() throws RemoteException {
+	// The current node
+	private NodeImpl node;
+		
+	protected AgentsBalancerImpl(NodeImpl node) throws RemoteException {
 		super();
-		try {
-			Registry registry = LocateRegistry.getRegistry("localhost");
-			agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		this.node = node;
 	}
 
 	@Override
@@ -56,10 +53,22 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 
 	}
 
+	// ¿Falta un setter de NodeAgent para el NodeInformation?
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
-		agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
+		synchronized (node.getClusterAdministration().connectedNodes()) {
+			for(NodeInformation connectedNode: node.getClusterAdministration().connectedNodes()){
+				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+				try {
+					AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+					agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
+					break;
+				} catch (NotBoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 }

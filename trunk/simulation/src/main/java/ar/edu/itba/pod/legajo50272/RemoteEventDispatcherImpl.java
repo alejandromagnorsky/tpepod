@@ -27,7 +27,7 @@ public class RemoteEventDispatcherImpl extends UnicastRemoteObject implements
 	// The events for the current node that have been broadcasted
 	private BlockingQueue<EventInformation> eventsSended = new LinkedBlockingQueue<EventInformation>();
 	private Map<NodeInformation, BlockingQueue<EventInformation>> eventsToSendPerNode = new HashMap<NodeInformation, BlockingQueue<EventInformation>>();
-	// The current node information
+	// The current node
 	private final NodeImpl node;
 
 	private class DispatcherThread extends Thread {
@@ -35,14 +35,22 @@ public class RemoteEventDispatcherImpl extends UnicastRemoteObject implements
 		@Override
 		public void run() {
 			try {
-				EventInformation event = eventsToSend.take();
-				for(NodeInformation nodeInformation: node.getClusterAdministration().connectedNodes()){
-					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
-					RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.AGENTS_TRANSFER);
-					remoteEventDispatcher.publish(event);
+				while(true){
+					EventInformation event = eventsToSend.take();
+					int quant = 0;
+					synchronized (node.getClusterAdministration().connectedNodes()) {
+						int total = node.getClusterAdministration().connectedNodes().size();					
+						for(NodeInformation nodeInformation: node.getClusterAdministration().connectedNodes()){
+							Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+							RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.AGENTS_TRANSFER);
+							if(remoteEventDispatcher.publish(event))
+								quant++;
+							if(quant > total/2)
+								break;
+						}
+					}
+					eventsSended.add(event);
 				}
-				
-				eventsSended.add(event);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -58,10 +66,18 @@ public class RemoteEventDispatcherImpl extends UnicastRemoteObject implements
 		new DispatcherThread().start();
 	}
 
+	// ¿Solo se puede procesar los de eventsSended?
+	// ¿Las que ya fueron procesadas deben borrarse de eventsSended?
+	// ¿En que momento se carga eventsToSendPerNode?
+	// ¿Los metodos de la interfaz EventDispatcher tienen que usar los metodos de la interfaz RemoteEventDispatcher?
 	@Override
-	public void publish(EventInformation event) throws RemoteException,
+	public boolean publish(EventInformation event) throws RemoteException,
 			InterruptedException {
-		this.eventsToSend.offer(event);
+		if(!eventsToSend.contains(event) && !eventsSended.contains(event)){
+			this.eventsToSend.offer(event);
+			return true;
+		}
+		return false;
 	}
 
 	@Override
