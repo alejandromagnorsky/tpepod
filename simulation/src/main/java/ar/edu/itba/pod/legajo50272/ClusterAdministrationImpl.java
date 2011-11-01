@@ -43,14 +43,14 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 		return groupId != null;
 	}
 
+	
+	// ¿Como se obtiene el groupId?
 	@Override
 	public void connectToGroup(String host, int port) throws RemoteException,
 			NotBoundException {
 		Registry registry = LocateRegistry.getRegistry(host, port);
-		ClusterAdministration cluster = (ClusterAdministration) registry
-				.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
-		this.connectedNodes = Collections.synchronizedSet(cluster
-				.addNewNode(node.getNodeInformation()));
+		ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
+		this.connectedNodes = Collections.synchronizedSet(cluster.addNewNode(node.getNodeInformation()));
 	}
 
 	@Override
@@ -65,13 +65,11 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 			throws RemoteException, NotBoundException {
 		if (!node.getNodeInformation().equals(nodeInformation)
 				&& !connectedNodes.contains(nodeInformation)) {
-			connectedNodes().add(nodeInformation);
 			synchronized (connectedNodes) {
+				connectedNodes().add(nodeInformation);			
 				for (NodeInformation connectedNode : connectedNodes) {
-					Registry registry = LocateRegistry.getRegistry(
-							connectedNode.host(), connectedNode.port());
-					ClusterAdministration cluster = (ClusterAdministration) registry
-							.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
+					Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+					ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
 					cluster.addNewNode(nodeInformation);
 				}
 			}

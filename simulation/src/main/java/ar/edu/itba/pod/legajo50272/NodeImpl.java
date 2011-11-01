@@ -4,12 +4,16 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
+import org.joda.time.Duration;
+
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.event.RemoteEventDispatcher;
 import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
 import ar.edu.itba.node.api.ClusterAdministration;
+import ar.edu.itba.pod.time.TimeMapper;
+import ar.edu.itba.pod.time.TimeMappers;
 
 // -D java.rmi.server.hostname=IP
 
@@ -19,20 +23,20 @@ public class NodeImpl implements Node {
 	private static int port = 1099;
 	private static String id = host + port;
 
-	private NodeInformation nodeInformation = new NodeInformation(host, port,
-			id);
+	private NodeInformation nodeInformation = new NodeInformation(host, port, id);
+	private TimeMapper timeMapper;
 	private ClusterAdministration clusterAdministration;
 	private RemoteEventDispatcher remoteEventDispatcher;
 	private AgentsTransfer agentsTransfer;
 	private AgentsBalancer agentsBalancer;
 
-	public NodeImpl(String host, int port, String id) {
+	public NodeImpl(String host, int port, String id, TimeMapper timeMapper) {
 		try {
 			nodeInformation = new NodeInformation(host, port, id);
 			clusterAdministration = new ClusterAdministrationImpl(this);
 			remoteEventDispatcher = new RemoteEventDispatcherImpl(this);
-			agentsTransfer = new AgentsTransferImpl();
-			agentsBalancer = new AgentsBalancerImpl();
+			agentsTransfer = new AgentsTransferImpl(this);
+			agentsBalancer = new AgentsBalancerImpl(this);
 		} catch (RemoteException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -40,7 +44,8 @@ public class NodeImpl implements Node {
 	}
 
 	public static void main(String[] args) {
-		NodeImpl node = new NodeImpl(host, port, id);
+		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(6));
+		NodeImpl node = new NodeImpl(host, port, id, timeMapper);
 		node.startServices();
 	}
 
@@ -59,6 +64,10 @@ public class NodeImpl implements Node {
 	public NodeInformation getNodeInformation() {
 		return nodeInformation;
 	}
+	
+	public TimeMapper getTimeMapper() {
+		return timeMapper;
+	}
 
 	public ClusterAdministration getClusterAdministration() {
 		return clusterAdministration;
@@ -74,6 +83,5 @@ public class NodeImpl implements Node {
 
 	public AgentsBalancer getAgentsBalancer() {
 		return agentsBalancer;
-	}
-	
+	}	
 }

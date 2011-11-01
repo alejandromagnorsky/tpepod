@@ -8,45 +8,24 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.balance.api.NodeAgent;
-import ar.edu.itba.pod.agent.runner.Agent;
+import ar.edu.itba.pod.multithread.AgentThread;
+import ar.edu.itba.pod.multithread.EventDispatcher;
 
 public class AgentsTransferImpl extends UnicastRemoteObject implements AgentsTransfer {
 
-	private class AgentThread extends Thread {
-		private final Agent agent;
-		
-		public AgentThread(Agent agent) {
-			super(agent.name());
-			this.agent = agent;
-		}
-		
-		@Override
-		public void run() {
-			agent.beforeStart(null);				
-			while(true) {
-				agent.execute(null);
-			}			
-		}
-
-		public boolean isRunning(Agent agent) {
-			return this.agent.equals(agent);
-		}
-		
-		public Agent getAgent() {
-			return agent;
-		}
-	}
-	
 	private BlockingQueue<AgentThread> agents = new LinkedBlockingQueue<AgentThread>();
-		
-	protected AgentsTransferImpl() throws RemoteException {
+	// The current node
+	private NodeImpl node;
+	
+	protected AgentsTransferImpl(NodeImpl node) throws RemoteException {
 		super();
+		this.node = node;
 	}
 
 	@Override
 	public void runAgentsOnNode(List<NodeAgent> agents) throws RemoteException {
 		for(NodeAgent nodeAgent: agents){
-			AgentThread agentThread = new AgentThread(nodeAgent.agent());
+			AgentThread agentThread = new AgentThread(node.getTimeMapper(), (EventDispatcher) node.getRemoteEventDispatcher(), nodeAgent.agent());
 			this.agents.add(agentThread);
 			agentThread.start();
 		}
