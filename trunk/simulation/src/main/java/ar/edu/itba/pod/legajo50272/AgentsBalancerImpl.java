@@ -11,6 +11,7 @@ import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.balance.api.NodeAgent;
 import ar.edu.itba.balance.api.NotCoordinatorException;
+import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
 
 public class AgentsBalancerImpl extends UnicastRemoteObject implements
@@ -22,7 +23,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		super();
 		try {
 			Registry registry = LocateRegistry.getRegistry("localhost");
-			agentsTransfer = (AgentsTransfer) registry.lookup("AgentsTransfer");
+			agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

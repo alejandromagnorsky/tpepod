@@ -8,24 +8,33 @@ import org.joda.time.Duration;
 
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.NodeAgent;
+import ar.edu.itba.node.Node;
 import ar.edu.itba.pod.agent.runner.Agent;
 import ar.edu.itba.pod.agent.runner.Simulation;
+import ar.edu.itba.pod.multithread.EventDispatcher;
+import ar.edu.itba.pod.multithread.LocalSimulation;
+import ar.edu.itba.pod.time.TimeMapper;
 
-public class RemoteSimulation implements Simulation {
+public class RemoteSimulation extends LocalSimulation implements Simulation {
 
-	
 	private AgentsBalancer agentsBalancer;
+	private RemoteEventDispatcherImpl remoteEventDispatcher;
 	
-	public RemoteSimulation(){
-		Registry registry;
+	
+	public RemoteSimulation(TimeMapper timeMapper){
+		super(timeMapper);
 		try {
-			registry = LocateRegistry.getRegistry("localhost");
-			agentsBalancer = (AgentsBalancer) registry.lookup("AgentsBalancer");
+			Registry registry = LocateRegistry.getRegistry("localhost");
+			agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
+	@Override
+	public EventDispatcher dispatcher() {
+		return this.remoteEventDispatcher;
+	}
 	
 	@Override
 	public void add(Agent agent) {
@@ -63,18 +72,6 @@ public class RemoteSimulation implements Simulation {
 	public void stop() throws InterruptedException {
 		// TODO Auto-generated method stub
 		
-	}
-
-	@Override
-	public Duration elapsed() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Duration remaining() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override

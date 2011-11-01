@@ -5,33 +5,32 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
 
+import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
 import ar.edu.itba.node.api.ClusterAdministration;
 
 public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 		ClusterAdministration {
 
-	// The information of the current node
-	private NodeInformation nodeInformation;
+	// The current node
+	private NodeImpl node;
 	// The rest of the nodes that the current node is connected to
-	private Set<NodeInformation> connectedNodes = new HashSet<NodeInformation>();
+	private Set<NodeInformation> connectedNodes;
 	private String groupId = null;
 
-
-	public ClusterAdministrationImpl(NodeInformation nodeInformation)
-			throws RemoteException {
+	public ClusterAdministrationImpl(NodeImpl node) throws RemoteException {
 		super();
-		this.nodeInformation = nodeInformation;
+		this.node = node;
 	}
 
 	@Override
 	public void createGroup() throws RemoteException {
 		if (isConnectedToGroup())
 			throw new IllegalStateException();
-		groupId = nodeInformation.id();
+		groupId = node.getNodeInformation().id();
 	}
 
 	@Override
@@ -47,14 +46,11 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 	@Override
 	public void connectToGroup(String host, int port) throws RemoteException,
 			NotBoundException {
-		try {
-			Registry registry = LocateRegistry.getRegistry(host, port);
-			ClusterAdministration cluster = (ClusterAdministration) registry.lookup("ClusterAdministration");
-			this.connectedNodes = cluster.addNewNode(nodeInformation);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
+		Registry registry = LocateRegistry.getRegistry(host, port);
+		ClusterAdministration cluster = (ClusterAdministration) registry
+				.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
+		this.connectedNodes = Collections.synchronizedSet(cluster
+				.addNewNode(node.getNodeInformation()));
 	}
 
 	@Override
@@ -65,10 +61,23 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 	}
 
 	@Override
-	public Set<NodeInformation> addNewNode(NodeInformation node)
+	public Set<NodeInformation> addNewNode(NodeInformation nodeInformation)
 			throws RemoteException, NotBoundException {
-		connectedNodes().add(node);
-		return connectedNodes();
+		if (!node.getNodeInformation().equals(nodeInformation)
+				&& !connectedNodes.contains(nodeInformation)) {
+			connectedNodes().add(nodeInformation);
+			synchronized (connectedNodes) {
+				for (NodeInformation connectedNode : connectedNodes) {
+					Registry registry = LocateRegistry.getRegistry(
+							connectedNode.host(), connectedNode.port());
+					ClusterAdministration cluster = (ClusterAdministration) registry
+							.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
+					cluster.addNewNode(nodeInformation);
+				}
+			}
+			return connectedNodes();
+		}
+		return null;
 	}
 
 	@Override
