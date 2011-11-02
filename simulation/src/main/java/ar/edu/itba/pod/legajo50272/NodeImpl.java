@@ -3,6 +3,7 @@ package ar.edu.itba.pod.legajo50272;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Set;
 
 import org.joda.time.Duration;
 
@@ -85,4 +86,8 @@ public class NodeImpl implements Node {
 	public AgentsBalancer getAgentsBalancer() {
 		return agentsBalancer;
 	}	
+	
+	public Set<NodeInformation> getConnectedNodes() throws RemoteException{
+		return clusterAdministration.connectedNodes();
+	}
 }
