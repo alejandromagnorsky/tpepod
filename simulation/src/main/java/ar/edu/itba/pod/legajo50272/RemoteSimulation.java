@@ -14,25 +14,24 @@ import ar.edu.itba.pod.multithread.LocalSimulation;
 
 public class RemoteSimulation extends LocalSimulation implements Simulation {
 
-	
 	// The current node
-	private NodeImpl node;	
+	private NodeImpl node;
 	private BlockingQueue<NodeAgent> agents;
-	
-	public RemoteSimulation(NodeImpl node){
+
+	public RemoteSimulation(NodeImpl node) {
 		super(node.getTimeMapper());
 		this.node = node;
 		this.agents = new LinkedBlockingQueue<NodeAgent>();
 	}
-	
+
 	@Override
 	public EventDispatcher dispatcher() {
-		return (EventDispatcher)node.getRemoteEventDispatcher();
+		return (EventDispatcher) node.getRemoteEventDispatcher();
 	}
-	
+
 	@Override
 	public void add(Agent agent) {
-		if(agent == null){
+		if (agent == null) {
 			System.out.println("Agent cannot be null");
 			return;
 		}
@@ -42,33 +41,32 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 	@Override
 	public void remove(Agent agent) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
-	
 	// ¿Getters para los variables de LocalSimulation?
 	@Override
 	public void start(Duration duration) {
 		synchronized (agents) {
-			for(NodeAgent agent: agents)
+			for (NodeAgent agent : agents)
 				try {
 					node.getAgentsBalancer().addAgentToCluster(agent);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-		}	
+		}
 	}
 
 	@Override
 	public void startAndWait(Duration duration) throws InterruptedException {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void stop() throws InterruptedException {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override

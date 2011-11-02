@@ -37,6 +37,7 @@ public class NodeImpl implements Node {
 			remoteEventDispatcher = new RemoteEventDispatcherImpl(this);
 			agentsTransfer = new AgentsTransferImpl(this);
 			agentsBalancer = new AgentsBalancerImpl(this);
+			this.timeMapper = timeMapper;
 		} catch (RemoteException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
