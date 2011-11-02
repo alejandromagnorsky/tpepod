@@ -5,11 +5,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -24,12 +21,12 @@ import ar.edu.itba.pod.multithread.MultiThreadEventDispatcher;
 
 public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implements RemoteEventDispatcher {
 
-	// The events to send
+	// The events to broadcast
 	private BlockingQueue<EventInformation> eventsToSend = new LinkedBlockingQueue<EventInformation>();
 	// The history of events
-	private List<EventInformation> events = Collections.synchronizedList(new ArrayList<EventInformation>());
-	// Current position in the history of events that has to be sent
-	private Map<NodeInformation, Integer> indexPerNode = new HashMap<NodeInformation, Integer>();
+	private BlockingQueue<EventInformation> events = new LinkedBlockingQueue<EventInformation>();
+	// Events to broadcast per node
+	private Map<NodeInformation, BlockingQueue<EventInformation>> eventsPerNode = new HashMap<NodeInformation, BlockingQueue<EventInformation>>();
 	// The current node
 	private final NodeImpl node;
 
@@ -42,16 +39,13 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 					EventInformation event = eventsToSend.take();
 					synchronized (node.getClusterAdministration().connectedNodes()) {
 						for(NodeInformation dest: node.getClusterAdministration().connectedNodes())
-							synchronized (indexPerNode) {
-								if(indexPerNode.get(dest) == null)
-									indexPerNode.put(dest, 0);
-								int index = indexPerNode.get(dest);
-								if(event.equals(events.get(index))){
+							synchronized (eventsPerNode) {
+								if(eventsPerNode.get(dest) != null && eventsPerNode.get(dest).peek().equals(event)){
 									Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
 									RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
 									boolean received = remoteEventDispatcher.publish(event);
-									indexPerNode.put(dest, index+1);
-									if(!received && Math.random() > 0.6)
+									eventsPerNode.get(dest).poll();
+									if(!received && Math.random() > 0.5)
 										break;
 								}
 							}
@@ -73,6 +67,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		new DispatcherThread().start();
 	}
 
+	// ¿Los nodos agregados deben recibir los eventos anteriores?
 	@Override
 	public synchronized boolean publish(EventInformation event) throws RemoteException,
 			InterruptedException {
@@ -80,7 +75,15 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 			// Append the event to the history of events
 			this.events.add(event);
 			// Add to the queue of events to broadcast
-			this.eventsToSend.offer(event);			
+			this.eventsToSend.offer(event);
+			
+			synchronized (node.getClusterAdministration().connectedNodes()) {
+				for(NodeInformation connectedNode: node.getClusterAdministration().connectedNodes()){
+					if(eventsPerNode.get(connectedNode) == null)
+						eventsPerNode.put(connectedNode, new LinkedBlockingQueue<EventInformation>());
+					eventsPerNode.get(connectedNode).add(event);
+				}
+			}
 			return true;
 		}		
 		return false;
@@ -89,17 +92,13 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	@Override
 	public Set<EventInformation> newEventsFor(NodeInformation nodeInformation)
 			throws RemoteException {
-		Set<EventInformation> ans = new HashSet<EventInformation>();
-		int length = events.size();
-		synchronized (indexPerNode) {
-			Integer index = indexPerNode.get(nodeInformation);
-			if(index == null || index >= length - 1)
-				return null;
-			for(int i = index; i < length; i++)
-				ans.add(events.get(i));
-			indexPerNode.put(nodeInformation, length - 1);
-		}
-		return ans;
+		if(eventsPerNode.get(nodeInformation) == null)
+			return null;
+		synchronized (eventsPerNode) {
+			Set<EventInformation> ans = new HashSet<EventInformation>(eventsPerNode.get(nodeInformation));
+			eventsPerNode.get(nodeInformation).clear();
+			return ans;	
+		}		
 	}
 
 	@Override
