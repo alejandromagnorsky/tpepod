@@ -1,5 +1,6 @@
 package ar.edu.itba.pod.legajo50272;
 
+import java.rmi.RemoteException;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -11,6 +12,7 @@ import ar.edu.itba.pod.agent.runner.Agent;
 import ar.edu.itba.pod.agent.runner.Simulation;
 import ar.edu.itba.pod.multithread.EventDispatcher;
 import ar.edu.itba.pod.multithread.LocalSimulation;
+import ar.edu.itba.pod.time.TimeMapper;
 
 public class RemoteSimulation extends LocalSimulation implements Simulation {
 
@@ -18,10 +20,34 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 	private NodeImpl node;
 	private BlockingQueue<NodeAgent> agents;
 
-	public RemoteSimulation(NodeImpl node) {
-		super(node.getTimeMapper());
-		this.node = node;
+	// Creates a server node
+	public RemoteSimulation(String host, int port, String id,
+			TimeMapper timeMapper) {
+		super(timeMapper);
+		initNode(host, port, id, timeMapper);
+		try {
+			node.getClusterAdministration().createGroup();
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
+	}
+
+	// Creates a client node
+	public RemoteSimulation(String host, int port, String id,
+			String serverHost, int serverPort, TimeMapper timeMapper) {
+		super(timeMapper);
+		initNode(host, port, id, timeMapper);
+		try {
+			node.getClusterAdministration().connectToGroup(serverHost, serverPort);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void initNode(String host, int port, String id, TimeMapper timeMapper){
 		this.agents = new LinkedBlockingQueue<NodeAgent>();
+		this.node = new NodeImpl(host, port, id, timeMapper);
+		node.startServices();
 	}
 
 	@Override
