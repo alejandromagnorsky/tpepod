@@ -32,6 +32,7 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 		if (isConnectedToGroup())
 			throw new IllegalStateException();
 		groupId = node.getNodeInformation().id();
+		connectedNodes.add(node.getNodeInformation());
 	}
 
 	@Override
@@ -52,6 +53,7 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 		Registry registry = LocateRegistry.getRegistry(host, port);
 		ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
 		this.connectedNodes = Collections.synchronizedSet(cluster.addNewNode(node.getNodeInformation()));
+		System.out.println(connectedNodes);
 	}
 
 	@Override
@@ -61,18 +63,17 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 
 	}
 
+	// Preguntar sobre el synchronized con el for each
 	@Override
 	public Set<NodeInformation> addNewNode(NodeInformation nodeInformation)
 			throws RemoteException, NotBoundException {
 		if (!node.getNodeInformation().equals(nodeInformation)
 				&& !connectedNodes.contains(nodeInformation)) {
 			connectedNodes.add(nodeInformation);
-			synchronized (connectedNodes) {				
-				for (NodeInformation connectedNode : connectedNodes) {
-					Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
-					ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
-					cluster.addNewNode(nodeInformation);
-				}
+			for (NodeInformation connectedNode : connectedNodes) {
+				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+				ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
+				cluster.addNewNode(nodeInformation);
 			}
 			return connectedNodes();
 		}
