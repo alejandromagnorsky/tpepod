@@ -5,8 +5,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Set;
 
-import org.joda.time.Duration;
-
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.event.RemoteEventDispatcher;
@@ -14,17 +12,12 @@ import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
 import ar.edu.itba.node.api.ClusterAdministration;
 import ar.edu.itba.pod.time.TimeMapper;
-import ar.edu.itba.pod.time.TimeMappers;
 
 // -D java.rmi.server.hostname=IP
 
 public class NodeImpl implements Node {
 
-	private static String host = "localhost";
-	private static int port = 1099;
-	private static String id = host + port;
-
-	private NodeInformation nodeInformation = new NodeInformation(host, port, id);
+	private NodeInformation nodeInformation;
 	private TimeMapper timeMapper;
 	private ClusterAdministration clusterAdministration;
 	private RemoteEventDispatcher remoteEventDispatcher;
@@ -45,15 +38,9 @@ public class NodeImpl implements Node {
 		}
 	}
 
-	public static void main(String[] args) {
-		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(6));
-		NodeImpl node = new NodeImpl(host, port, id, timeMapper);
-		node.startServices();
-	}
-
 	public void startServices() {
 		try {
-			Registry registry = LocateRegistry.createRegistry(port);
+			Registry registry = LocateRegistry.createRegistry(nodeInformation.port());
 			registry.bind(CLUSTER_COMUNICATION, clusterAdministration);
 			registry.bind(DISTRIBUTED_EVENT_DISPATCHER, remoteEventDispatcher);
 			registry.bind(AGENTS_TRANSFER, agentsTransfer);

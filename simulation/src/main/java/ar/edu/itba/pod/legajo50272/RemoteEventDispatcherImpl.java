@@ -80,6 +80,8 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 			this.events.add(event);
 			// Add to the queue of events to broadcast
 			this.eventsToSend.offer(event);
+			// Publish the event locally
+			super.publish(event.source(), event.event());
 			return true;
 		}		
 		return false;
@@ -108,7 +110,12 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	@Override
 	public void publish(Agent source, Serializable event)
 			throws InterruptedException {
-		// TODO Auto-generated method stub
-		
+		EventInformation eventInformation = new EventInformation(event, this.node.getNodeInformation().id(), source);
+		eventInformation.setReceivedTime(System.currentTimeMillis());
+		try {
+			publish(eventInformation);
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
 	}
 }
