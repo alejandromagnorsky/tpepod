@@ -47,6 +47,7 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 
 	
 	// ¿Como se obtiene el groupId?
+	// ¿ConnectedNodes incluye al nodo local?
 	@Override
 	public void connectToGroup(String host, int port) throws RemoteException,
 			NotBoundException {

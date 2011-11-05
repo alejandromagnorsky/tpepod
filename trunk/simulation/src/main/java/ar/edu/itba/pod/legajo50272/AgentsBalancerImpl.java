@@ -21,30 +21,58 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 
 	// The current node
 	private NodeImpl node;
+	private NodeInformation coordinator;
+	private boolean electionLive;
 		
 	protected AgentsBalancerImpl(NodeImpl node) throws RemoteException {
 		super();
 		this.node = node;
 	}
 
+	
+	// ¿Cual es el flujo para la seleccion de un coordinador?
+	// ¿Para que se usa el timestamp?
+	// ¿Condicion para terminar de broadcastear?
 	@Override
 	public void bullyElection(NodeInformation node, long timestamp)
 			throws RemoteException {
-		// TODO Auto-generated method stub
-
+		NodeInformation coordinatorCandidate = node;
+		if(this.node.getNodeInformation().id().compareTo(coordinatorCandidate.id()) > 0){
+			Registry registry = LocateRegistry.getRegistry(node.host(), node.port());
+			try {
+				AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);			
+				agentsBalancer.bullyOk(this.node.getNodeInformation());
+			} catch (NotBoundException e) {
+				e.printStackTrace();
+			}
+			electionLive = true;
+			coordinatorCandidate = this.node.getNodeInformation();
+		}
+		
+		for(NodeInformation dest: this.node.getConnectedNodes()){
+			if(coordinatorCandidate.equals(this.node.getNodeInformation()) && !electionLive)
+				break;
+			Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
+			try {
+				AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);			
+				agentsBalancer.bullyElection(coordinatorCandidate, System.currentTimeMillis());
+			} catch (NotBoundException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		this.bullyCoordinator(coordinatorCandidate, System.currentTimeMillis());		
 	}
 
 	@Override
 	public void bullyOk(NodeInformation node) throws RemoteException {
-		// TODO Auto-generated method stub
-
+		electionLive = false;
 	}
 
 	@Override
 	public void bullyCoordinator(NodeInformation node, long timestamp)
 			throws RemoteException {
-		// TODO Auto-generated method stub
-
+		this.coordinator = node;
 	}
 
 	@Override
@@ -55,10 +83,12 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	}
 
 	// ¿Falta un setter de NodeAgent para el NodeInformation?
-	// ¿ConnectedNodes incluye al nodo local?
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
+		if(!this.node.equals(coordinator))
+			throw new NotCoordinatorException(coordinator);
+		
 		List<NodeInformation> clusterNodes = new ArrayList<NodeInformation>(node.getConnectedNodes());
 		NodeInformation selectedNode = clusterNodes.get((int)Math.floor(Math.random()*clusterNodes.size()));
 		
