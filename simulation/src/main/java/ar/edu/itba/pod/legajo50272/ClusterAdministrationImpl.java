@@ -16,12 +16,12 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 		ClusterAdministration {
 
 	// The current node
-	private NodeImpl node;
+	private RemoteSimulation node;
 	// The rest of the nodes that the current node is connected to (include itself)
 	private Set<NodeInformation> connectedNodes = new CopyOnWriteArraySet<NodeInformation>();
 	private String groupId = null;
 
-	public ClusterAdministrationImpl(NodeImpl node) throws RemoteException {
+	public ClusterAdministrationImpl(RemoteSimulation node) throws RemoteException {
 		super();
 		this.node = node;
 	}

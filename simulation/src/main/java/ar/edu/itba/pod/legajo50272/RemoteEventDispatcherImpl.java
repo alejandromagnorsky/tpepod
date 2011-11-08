@@ -33,7 +33,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	// Current position in the history of events that has to be sent
     private Map<NodeInformation, Integer> indexPerNode = new ConcurrentHashMap<NodeInformation, Integer>();
 	// The current node
-	private final NodeImpl node;
+	private final RemoteSimulation node;
 	private ExecutorService executor = Executors.newFixedThreadPool(2);
 
 	private class DispatcherTask implements Runnable {
@@ -93,7 +93,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	
 	
 
-	public RemoteEventDispatcherImpl(NodeImpl node)
+	public RemoteEventDispatcherImpl(RemoteSimulation node)
 			throws RemoteException {
 		super();
 		UnicastRemoteObject.exportObject(this, 0);

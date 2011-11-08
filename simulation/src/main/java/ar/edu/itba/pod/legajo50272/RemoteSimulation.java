@@ -1,28 +1,43 @@
 package ar.edu.itba.pod.legajo50272;
 
 import java.rmi.RemoteException;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
+import ar.edu.itba.balance.api.AgentsBalancer;
+import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.balance.api.NodeAgent;
+import ar.edu.itba.event.RemoteEventDispatcher;
+import ar.edu.itba.node.Node;
+import ar.edu.itba.node.NodeInformation;
+import ar.edu.itba.node.api.ClusterAdministration;
+import ar.edu.itba.node.api.NodeStatistics;
+import ar.edu.itba.node.api.StatisticReports;
+import ar.edu.itba.pod.agent.market.AgentState;
+import ar.edu.itba.pod.agent.runner.Agent;
 import ar.edu.itba.pod.agent.runner.Simulation;
 import ar.edu.itba.pod.multithread.EventDispatcher;
 import ar.edu.itba.pod.multithread.LocalSimulation;
 import ar.edu.itba.pod.time.TimeMapper;
 
-public class RemoteSimulation extends LocalSimulation implements Simulation {
+public class RemoteSimulation extends LocalSimulation implements Simulation, Node, AgentsTransfer, StatisticReports {
 
-	// The current node
-	private NodeImpl node;
-	private BlockingQueue<NodeAgent> agents;
-
+	// The current node information
+	private NodeInformation nodeInformation;
+	private ClusterAdministration clusterAdministration;
+	private RemoteEventDispatcher remoteEventDispatcher;
+	private AgentsBalancer agentsBalancer;
+	
 	// Creates a server node
 	public RemoteSimulation(String host, int port, String id,
 			TimeMapper timeMapper) {
 		super(timeMapper);
-		initNode(host, port, id, timeMapper);
+		initServices(host, port, id);
 		try {
-			node.getClusterAdministration().createGroup();
+			clusterAdministration.createGroup();
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}
@@ -32,83 +47,74 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 	public RemoteSimulation(String host, int port, String id,
 			String serverHost, int serverPort, TimeMapper timeMapper) {
 		super(timeMapper);
-		initNode(host, port, id, timeMapper);
+		initServices(host, port, id);
 		try {
-			node.getClusterAdministration().connectToGroup(serverHost, serverPort);
+			clusterAdministration.connectToGroup(serverHost, serverPort);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
-	private void initNode(String host, int port, String id, TimeMapper timeMapper){
-		this.agents = new LinkedBlockingQueue<NodeAgent>();
-		this.node = new NodeImpl(host, port, id, timeMapper);
-		node.startServices();
+	private void initServices(String host, int port, String id){
+		nodeInformation = new NodeInformation(host, port, id);
+		try {
+			clusterAdministration = new ClusterAdministrationImpl(this);
+			remoteEventDispatcher = new RemoteEventDispatcherImpl(this);
+			agentsBalancer = new AgentsBalancerImpl(this);
+			Registry registry = LocateRegistry.createRegistry(nodeInformation.port());		
+			registry.bind(CLUSTER_COMUNICATION, clusterAdministration);
+			registry.bind(DISTRIBUTED_EVENT_DISPATCHER, remoteEventDispatcher);
+			registry.bind(AGENTS_TRANSFER, this);
+			registry.bind(AGENTS_BALANCER, agentsBalancer);
+		} catch(Exception e){
+			e.printStackTrace();
+		}
 	}
 
 	@Override
 	public EventDispatcher dispatcher() {
-		return (EventDispatcher) node.getRemoteEventDispatcher();
+		return (EventDispatcher) remoteEventDispatcher;
 	}
-
-	/*
-	@Override
-	public void add(Agent agent) {
-		if (agent == null) {
-			System.out.println("Agent cannot be null");
-			return;
-		}
-		agents.add(new NodeAgent(null, agent));
-	}
-
-	@Override
-	public void remove(Agent agent) {
-		// TODO Auto-generated method stub
-
-	}
-
-	// ¿Getters para los variables de LocalSimulation?
-	@Override
-	public void start(Duration duration) {
-		synchronized (agents) {
-			for (NodeAgent agent : agents)
-				try {
-					node.getAgentsBalancer().addAgentToCluster(agent);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-		}
-	}
-
-	@Override
-	public void startAndWait(Duration duration) throws InterruptedException {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void stop() throws InterruptedException {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public int agentsRunning() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public List<Agent> getAgentsRunning() {
-		// TODO Auto-generated method stub
-		return null;
-	}*/
 
 	public void chooseCoordinator(){
 		try {
-			((AgentsBalancerImpl)node.getAgentsBalancer()).chooseCoordinator();
+			((AgentsBalancerImpl) agentsBalancer).chooseCoordinator();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	@Override
+	public void runAgentsOnNode(List<NodeAgent> agents) throws RemoteException {
+		for(NodeAgent nodeAgent: agents)
+			add(nodeAgent.agent());		
+	}
+
+	@Override
+	public int getNumberOfAgents() throws RemoteException {
+		return agentsRunning();
+	}
+
+	@Override
+	public List<NodeAgent> stopAndGet(int numberOfAgents)
+			throws RemoteException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	public Set<NodeInformation> getConnectedNodes() throws RemoteException{
+		return clusterAdministration.connectedNodes();
+	}
+	
+	public NodeInformation getNodeInformation(){
+		return nodeInformation;
+	}
+
+	@Override
+	public NodeStatistics getNodeStatistics() throws RemoteException {
+		List<AgentState> agentsStates = new ArrayList<AgentState>();
+		for(Agent agent: this.getAgentsRunning())
+			agentsStates.add(agent.state());
+		return new NodeStatistics(this.agentsRunning(), agentsStates);
 	}
 }
