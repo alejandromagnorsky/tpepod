@@ -17,7 +17,7 @@ public class AgentsTransferImpl extends UnicastRemoteObject implements AgentsTra
 	// The current node
 	private NodeImpl node;
 	
-	protected AgentsTransferImpl(NodeImpl node) throws RemoteException {
+	public AgentsTransferImpl(NodeImpl node) throws RemoteException {
 		super();
 		this.node = node;
 	}

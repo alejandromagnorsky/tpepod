@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import ar.edu.itba.event.EventInformation;
@@ -32,8 +34,9 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
     private Map<NodeInformation, Integer> indexPerNode = new ConcurrentHashMap<NodeInformation, Integer>();
 	// The current node
 	private final NodeImpl node;
+	private ExecutorService executor = Executors.newFixedThreadPool(2);
 
-	private class DispatcherThread extends Thread {
+	private class DispatcherTask implements Runnable {
 
 		@Override
 		public void run() {
@@ -53,13 +56,15 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 							}
 						}
 				}
-			} catch (Exception e) {
+			} catch (InterruptedException e) {
+				return;
+			}catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 	}
 	
-	private class CheckerThread extends Thread {
+	private class CheckerTask implements Runnable {
 
 		@Override
 		public void run() {
@@ -78,6 +83,8 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 						}
 					}
 				}
+			} catch (InterruptedException e) {
+				return;
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -91,8 +98,8 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		super();
 		UnicastRemoteObject.exportObject(this, 0);
 		this.node = node;
-		new DispatcherThread().start();
-		new CheckerThread().start();
+		executor.execute(new DispatcherTask());
+		executor.execute(new CheckerTask());
 	}
 
 	@Override
