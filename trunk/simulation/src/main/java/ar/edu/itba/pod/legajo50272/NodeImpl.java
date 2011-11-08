@@ -33,7 +33,6 @@ public class NodeImpl implements Node {
 			agentsBalancer = new AgentsBalancerImpl(this);
 			this.timeMapper = timeMapper;
 		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
