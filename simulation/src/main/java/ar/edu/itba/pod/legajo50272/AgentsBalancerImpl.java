@@ -31,8 +31,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 
 	
 	// ¿Cual es el flujo para la seleccion de un coordinador?
-	// ¿Para que se usa el timestamp?
-	// ¿Condicion para terminar de broadcastear?
 	@Override
 	public void bullyElection(NodeInformation node, long timestamp)
 			throws RemoteException {
@@ -82,12 +80,11 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 
 	}
 
-	// ¿Falta un setter de NodeAgent para el NodeInformation?
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
-		if(!this.node.equals(coordinator))
-			throw new NotCoordinatorException(coordinator);
+		//if(!this.node.equals(coordinator))
+		//	throw new NotCoordinatorException(coordinator);
 		
 		List<NodeInformation> clusterNodes = new ArrayList<NodeInformation>(node.getConnectedNodes());
 		NodeInformation selectedNode = clusterNodes.get((int)Math.floor(Math.random()*clusterNodes.size()));
