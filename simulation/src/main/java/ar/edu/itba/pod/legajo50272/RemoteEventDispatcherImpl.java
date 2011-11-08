@@ -68,10 +68,14 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 					Thread.sleep(1000);
 					synchronized (node.getConnectedNodes()) {
 						List<NodeInformation> connectedNodes = new ArrayList<NodeInformation>(node.getConnectedNodes());
-						NodeInformation dest = connectedNodes.get((int)Math.floor(Math.random()*connectedNodes.size()));					
-						Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
-						RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
-						events.addAll(remoteEventDispatcher.newEventsFor(node.getNodeInformation()));
+						if(connectedNodes.size() > 1){
+							connectedNodes.remove(node.getNodeInformation());						
+							NodeInformation dest = connectedNodes.get((int)Math.floor(Math.random()*connectedNodes.size()));
+							Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
+							RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
+							for(EventInformation newEvent: remoteEventDispatcher.newEventsFor(node.getNodeInformation()))
+								publish(newEvent);
+						}
 					}
 				}
 			} catch (Exception e) {
@@ -106,7 +110,6 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		return false;
 	}
 
-	// Los nodos agregados deben recibir los eventos anteriores
 	@Override
 	public Set<EventInformation> newEventsFor(NodeInformation nodeInformation)
 			throws RemoteException {
@@ -118,7 +121,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
             	indexPerNode.put(nodeInformation, 0);
             	index = 0;
             }
-            if(index >= length - 1)
+            if(index > length - 1)
             	return ans;
             for(int i = index; i < length; i++)
             	ans.add(events.get(i));
