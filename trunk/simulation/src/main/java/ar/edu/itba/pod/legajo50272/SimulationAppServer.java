@@ -7,7 +7,7 @@ import ar.edu.itba.pod.time.TimeMappers;
 
 public class SimulationAppServer {
 
-	private static String host = "10.6.0.44";
+	private static String host = "localhost";
 	private static int port = 1100;
 	private static String id = host + port;
 	

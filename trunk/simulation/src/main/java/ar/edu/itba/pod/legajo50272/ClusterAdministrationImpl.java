@@ -18,7 +18,7 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 
 	// The current node
 	private NodeImpl node;
-	// The rest of the nodes that the current node is connected to
+	// The rest of the nodes that the current node is connected to (include itself)
 	private Set<NodeInformation> connectedNodes = Collections.synchronizedSet(new HashSet<NodeInformation>());
 	private String groupId = null;
 
@@ -46,14 +46,13 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 	}
 
 	
-	// ¿Como se obtiene el groupId?
-	// ¿ConnectedNodes incluye al nodo local?
 	@Override
 	public void connectToGroup(String host, int port) throws RemoteException,
 			NotBoundException {
 		Registry registry = LocateRegistry.getRegistry(host, port);
 		ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
 		this.connectedNodes = Collections.synchronizedSet(cluster.addNewNode(node.getNodeInformation()));
+		this.groupId = cluster.getGroupId();
 		System.out.println(connectedNodes);
 	}
 
@@ -64,13 +63,12 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 
 	}
 
-	// Preguntar sobre el synchronized con el for each
 	@Override
 	public Set<NodeInformation> addNewNode(NodeInformation nodeInformation)
 			throws RemoteException, NotBoundException {
 		if (!node.getNodeInformation().equals(nodeInformation)
-				&& !connectedNodes.contains(nodeInformation)) {
-			connectedNodes.add(nodeInformation);
+				&& connectedNodes.add(nodeInformation)) {
+			// TODO CopyOnWriteArraySet
 			for (NodeInformation connectedNode : connectedNodes) {
 				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
 				ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
