@@ -1,14 +1,10 @@
 package ar.edu.itba.pod.legajo50272;
 
 import java.rmi.RemoteException;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.joda.time.Duration;
-
 import ar.edu.itba.balance.api.NodeAgent;
-import ar.edu.itba.pod.agent.runner.Agent;
 import ar.edu.itba.pod.agent.runner.Simulation;
 import ar.edu.itba.pod.multithread.EventDispatcher;
 import ar.edu.itba.pod.multithread.LocalSimulation;
@@ -55,6 +51,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 		return (EventDispatcher) node.getRemoteEventDispatcher();
 	}
 
+	/*
 	@Override
 	public void add(Agent agent) {
 		if (agent == null) {
@@ -105,6 +102,6 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 	public List<Agent> getAgentsRunning() {
 		// TODO Auto-generated method stub
 		return null;
-	}
+	}*/
 
 }
