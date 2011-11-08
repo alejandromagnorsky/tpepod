@@ -1,6 +1,5 @@
 package ar.edu.itba.pod.legajo50272;
 
-import java.awt.Event;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -9,8 +8,6 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,7 +24,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		AgentsBalancer {
 
 	// The current node
-	private final NodeImpl node;
+	private final RemoteSimulation node;
 	// The coordinator of the cluster
 	private NodeInformation coordinator;
 	private ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -123,7 +120,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		}
 	}
 
-	public AgentsBalancerImpl(NodeImpl node) throws RemoteException {
+	public AgentsBalancerImpl(RemoteSimulation node) throws RemoteException {
 		super();
 		this.node = node;
 		executor.execute(new ElectionTask());
