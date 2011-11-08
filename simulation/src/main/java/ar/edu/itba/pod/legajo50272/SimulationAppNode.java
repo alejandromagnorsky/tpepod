@@ -64,6 +64,8 @@ public class SimulationAppNode {
 		while (true) {
 			try {
 				line = readLine();
+				if(line.equals("choose"))
+					remoteSimulation.chooseCoordinator();
 				values = line.split(" ");
 				if (values[0].equals("add")) {
 					values = values[1].split(",");

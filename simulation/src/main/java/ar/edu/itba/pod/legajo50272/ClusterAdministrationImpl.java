@@ -5,9 +5,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
@@ -19,7 +18,7 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 	// The current node
 	private NodeImpl node;
 	// The rest of the nodes that the current node is connected to (include itself)
-	private Set<NodeInformation> connectedNodes = Collections.synchronizedSet(new HashSet<NodeInformation>());
+	private Set<NodeInformation> connectedNodes = new CopyOnWriteArraySet<NodeInformation>();
 	private String groupId = null;
 
 	public ClusterAdministrationImpl(NodeImpl node) throws RemoteException {
@@ -51,7 +50,7 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 			NotBoundException {
 		Registry registry = LocateRegistry.getRegistry(host, port);
 		ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
-		this.connectedNodes = Collections.synchronizedSet(cluster.addNewNode(node.getNodeInformation()));
+		this.connectedNodes = new CopyOnWriteArraySet<NodeInformation>(cluster.addNewNode(node.getNodeInformation()));
 		this.groupId = cluster.getGroupId();
 		System.out.println(connectedNodes);
 	}
@@ -68,7 +67,6 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 			throws RemoteException, NotBoundException {
 		if (!node.getNodeInformation().equals(nodeInformation)
 				&& connectedNodes.add(nodeInformation)) {
-			// TODO CopyOnWriteArraySet
 			for (NodeInformation connectedNode : connectedNodes) {
 				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
 				ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);

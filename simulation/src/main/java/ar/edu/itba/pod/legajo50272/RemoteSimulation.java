@@ -104,4 +104,11 @@ public class RemoteSimulation extends LocalSimulation implements Simulation {
 		return null;
 	}*/
 
+	public void chooseCoordinator(){
+		try {
+			((AgentsBalancerImpl)node.getAgentsBalancer()).chooseCoordinator();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }
