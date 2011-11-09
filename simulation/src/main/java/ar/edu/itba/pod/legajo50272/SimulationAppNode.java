@@ -1,8 +1,10 @@
 package ar.edu.itba.pod.legajo50272;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Properties;
 
 import org.joda.time.Duration;
 
@@ -18,6 +20,10 @@ public class SimulationAppNode {
 
 	private static BufferedReader stdin = new BufferedReader(
 			new InputStreamReader(System.in));
+	private static String host;
+	private static Integer port;
+	private static String serverHost;
+	private static Integer serverPort;
 
 	public static void main(String[] args) {
 		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration
@@ -29,12 +35,15 @@ public class SimulationAppNode {
 		Resource gold = new Resource("Mineral", "Gold");
 		Resource copper = new Resource("Mineral", "Copper");
 		Resource steel = new Resource("Alloy", "Steel");
-
-		System.out.println("Enter your host and your port (host:port)");
-		line = readLine();
-		values = line.split(":");
-		String host = values[0];
-		int port = Integer.valueOf(values[1]);
+		loadFile();
+		
+		if (host == null || port == null) {
+			System.out.println("Enter your host and your port (host:port)");
+			line = readLine();
+			values = line.split(":");
+			host = values[0];
+			port = Integer.valueOf(values[1]);
+		}
 		String id = host + port;
 
 		System.out
@@ -46,12 +55,14 @@ public class SimulationAppNode {
 			remoteSimulation.add(new Market("cooper market", copper));
 			remoteSimulation.add(new Market("steel market", steel));
 		} else {
-			System.out
-					.println("Enter host and port from the entry node (host:port)");
-			line = readLine();
-			values = line.split(":");
-			String serverHost = values[0];
-			int serverPort = Integer.valueOf(values[1]);
+			if (serverHost == null || serverPort == null) {
+				System.out
+						.println("Enter host and port from the entry node (host:port)");
+				line = readLine();
+				values = line.split(":");
+				serverHost = values[0];
+				serverPort = Integer.valueOf(values[1]);
+			}
 			remoteSimulation = new RemoteSimulation(host, port, id, serverHost,
 					serverPort, timeMapper);
 		}
@@ -59,12 +70,12 @@ public class SimulationAppNode {
 		remoteSimulation.start(Duration.standardMinutes(10));
 
 		System.out
-				.println("Available type of agents: cc:CooperConsumer / sc:SteelConsumer / gc:GoldConsumer / cm:CopperMine / sm:SilverMine / gm:GoldMine");
+				.println("Type of agents: cc:CooperConsumer / sc:SteelConsumer / gc:GoldConsumer / cm:CopperMine / sm:SilverMine / gm:GoldMine");
 		System.out.println("Add agents: add type,rate,amount");
 		while (true) {
 			try {
 				line = readLine();
-				if(line.equals("choose"))
+				if (line.equals("choose"))
 					remoteSimulation.chooseCoordinator();
 				values = line.split(" ");
 				if (values[0].equals("add")) {
@@ -110,5 +121,18 @@ public class SimulationAppNode {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	private static void loadFile() {
+		Properties properties = new Properties();
+		try {
+			properties.load(new FileInputStream("src/main/resources/config.properties"));
+			host = properties.getProperty("host");
+			port = Integer.valueOf(properties.getProperty("port"));
+			serverHost = properties.getProperty("serverHost");
+			serverPort = Integer.valueOf(properties.getProperty("serverPort"));
+		} catch (Exception e) {
+			System.out.println("Error loading configuration file");
+		}
 	}
 }

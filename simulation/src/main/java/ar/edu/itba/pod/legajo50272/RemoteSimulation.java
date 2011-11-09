@@ -6,6 +6,8 @@ import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
@@ -30,6 +32,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation, Nod
 	private ClusterAdministration clusterAdministration;
 	private RemoteEventDispatcher remoteEventDispatcher;
 	private AgentsBalancer agentsBalancer;
+	private ExecutorService executor = Executors.newFixedThreadPool(4);
 	
 	// Creates a server node
 	public RemoteSimulation(String host, int port, String id,
@@ -109,12 +112,16 @@ public class RemoteSimulation extends LocalSimulation implements Simulation, Nod
 	public NodeInformation getNodeInformation(){
 		return nodeInformation;
 	}
+	
+	public void execute(Runnable task){
+		executor.execute(task);
+	}
 
 	@Override
 	public NodeStatistics getNodeStatistics() throws RemoteException {
 		List<AgentState> agentsStates = new ArrayList<AgentState>();
 		for(Agent agent: this.getAgentsRunning())
 			agentsStates.add(agent.state());
-		return new NodeStatistics(this.agentsRunning(), agentsStates);
+		return new NodeStatistics(super.agentsRunning(), agentsStates);
 	}
 }

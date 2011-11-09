@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import ar.edu.itba.balance.api.AgentsBalancer;
@@ -27,8 +25,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	private final RemoteSimulation node;
 	// The coordinator of the cluster
 	private NodeInformation coordinator;
-	private ExecutorService executor = Executors.newFixedThreadPool(2);
-	
+		
 	private volatile boolean electionLive;
 	private BlockingQueue<BullyEvent> eventsForElection = new LinkedBlockingQueue<BullyEvent>();
 	private BlockingQueue<BullyEvent> electionEvents = new LinkedBlockingQueue<BullyEvent>();
@@ -123,7 +120,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	public AgentsBalancerImpl(RemoteSimulation node) throws RemoteException {
 		super();
 		this.node = node;
-		executor.execute(new ElectionTask());
+		node.execute(new ElectionTask());
 	}
 
 	// ¿Cual es el flujo para la seleccion de un coordinador?
@@ -150,7 +147,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	}
 	
 	public void chooseCoordinator(){
-		executor.execute(new ChooseCoordinatorTask());
+		node.execute(new ChooseCoordinatorTask());
 	}
 
 	@Override
