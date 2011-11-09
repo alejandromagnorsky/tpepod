@@ -13,8 +13,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import ar.edu.itba.event.EventInformation;
@@ -34,8 +32,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
     private Map<NodeInformation, Integer> indexPerNode = new ConcurrentHashMap<NodeInformation, Integer>();
 	// The current node
 	private final RemoteSimulation node;
-	private ExecutorService executor = Executors.newFixedThreadPool(2);
-
+	
 	private class DispatcherTask implements Runnable {
 
 		@Override
@@ -98,8 +95,8 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		super();
 		UnicastRemoteObject.exportObject(this, 0);
 		this.node = node;
-		executor.execute(new DispatcherTask());
-		executor.execute(new CheckerTask());
+		node.execute(new DispatcherTask());
+		node.execute(new CheckerTask());
 	}
 
 	@Override
