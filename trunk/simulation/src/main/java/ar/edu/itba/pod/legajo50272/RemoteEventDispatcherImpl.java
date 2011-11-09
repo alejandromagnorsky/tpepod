@@ -137,8 +137,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	@Override
 	public BlockingQueue<Object> moveQueueFor(Agent agent)
 			throws RemoteException {
-		// TODO Auto-generated method stub
-		return null;
+		return super.deregister(agent);
 	}
 
 	@Override

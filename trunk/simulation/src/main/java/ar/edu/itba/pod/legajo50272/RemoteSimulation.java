@@ -3,37 +3,33 @@ package ar.edu.itba.pod.legajo50272;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
-import ar.edu.itba.balance.api.NodeAgent;
 import ar.edu.itba.event.RemoteEventDispatcher;
 import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
 import ar.edu.itba.node.api.ClusterAdministration;
-import ar.edu.itba.node.api.NodeStatistics;
-import ar.edu.itba.node.api.StatisticReports;
-import ar.edu.itba.pod.agent.market.AgentState;
-import ar.edu.itba.pod.agent.runner.Agent;
 import ar.edu.itba.pod.agent.runner.Simulation;
+import ar.edu.itba.pod.multithread.AgentThread;
 import ar.edu.itba.pod.multithread.EventDispatcher;
 import ar.edu.itba.pod.multithread.LocalSimulation;
 import ar.edu.itba.pod.time.TimeMapper;
 
-public class RemoteSimulation extends LocalSimulation implements Simulation, Node, AgentsTransfer, StatisticReports {
+public class RemoteSimulation extends LocalSimulation implements Simulation,
+		Node {
 
 	// The current node information
 	private NodeInformation nodeInformation;
 	private ClusterAdministration clusterAdministration;
 	private RemoteEventDispatcher remoteEventDispatcher;
 	private AgentsBalancer agentsBalancer;
+	private AgentsTransfer agentsTransfer;
 	private ExecutorService executor = Executors.newFixedThreadPool(4);
-	
+
 	// Creates a server node
 	public RemoteSimulation(String host, int port, String id,
 			TimeMapper timeMapper) {
@@ -57,19 +53,21 @@ public class RemoteSimulation extends LocalSimulation implements Simulation, Nod
 			e.printStackTrace();
 		}
 	}
-	
-	private void initServices(String host, int port, String id){
+
+	private void initServices(String host, int port, String id) {
 		nodeInformation = new NodeInformation(host, port, id);
 		try {
 			clusterAdministration = new ClusterAdministrationImpl(this);
 			remoteEventDispatcher = new RemoteEventDispatcherImpl(this);
 			agentsBalancer = new AgentsBalancerImpl(this);
-			Registry registry = LocateRegistry.createRegistry(nodeInformation.port());		
+			agentsTransfer = new AgentsTransferImpl(this);
+			Registry registry = LocateRegistry.createRegistry(nodeInformation
+					.port());
 			registry.bind(CLUSTER_COMUNICATION, clusterAdministration);
 			registry.bind(DISTRIBUTED_EVENT_DISPATCHER, remoteEventDispatcher);
-			registry.bind(AGENTS_TRANSFER, this);
 			registry.bind(AGENTS_BALANCER, agentsBalancer);
-		} catch(Exception e){
+			registry.bind(AGENTS_TRANSFER, agentsTransfer);
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
@@ -79,49 +77,30 @@ public class RemoteSimulation extends LocalSimulation implements Simulation, Nod
 		return (EventDispatcher) remoteEventDispatcher;
 	}
 
-	public void chooseCoordinator(){
-		try {
-			((AgentsBalancerImpl) agentsBalancer).chooseCoordinator();
-		} catch (Exception e) {
-			e.printStackTrace();
+	@Override
+	protected void addAgentThread(AgentThread thread){
+		synchronized (this) {
+			super.addAgentThread(thread);
 		}
-	}
-
-	@Override
-	public void runAgentsOnNode(List<NodeAgent> agents) throws RemoteException {
-		for(NodeAgent nodeAgent: agents)
-			add(nodeAgent.agent());		
-	}
-
-	@Override
-	public int getNumberOfAgents() throws RemoteException {
-		return agentsRunning();
-	}
-
-	@Override
-	public List<NodeAgent> stopAndGet(int numberOfAgents)
-			throws RemoteException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
-	public Set<NodeInformation> getConnectedNodes() throws RemoteException{
+	}	
+		
+	public Set<NodeInformation> getConnectedNodes() throws RemoteException {
 		return clusterAdministration.connectedNodes();
 	}
-	
-	public NodeInformation getNodeInformation(){
+
+	public NodeInformation getNodeInformation() {
 		return nodeInformation;
 	}
 	
-	public void execute(Runnable task){
-		executor.execute(task);
+	public AgentsTransfer getAgentsTransfer(){
+		return agentsTransfer;
+	}
+	
+	public AgentsBalancer getAgentsBalancer(){
+		return agentsBalancer;
 	}
 
-	@Override
-	public NodeStatistics getNodeStatistics() throws RemoteException {
-		List<AgentState> agentsStates = new ArrayList<AgentState>();
-		for(Agent agent: this.getAgentsRunning())
-			agentsStates.add(agent.state());
-		return new NodeStatistics(super.agentsRunning(), agentsStates);
+	public void execute(Runnable task) {
+		executor.execute(task);
 	}
 }

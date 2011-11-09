@@ -6,7 +6,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -170,20 +169,30 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 
 	}
 
+	// ¿El agent tiene que obtenerse de los agentsRunning y removerlo usando un nuevo stopAndGet(Agent agent)?
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
 		// if(!this.node.equals(coordinator))
 		// throw new NotCoordinatorException(coordinator);
-
-		List<NodeInformation> clusterNodes = new ArrayList<NodeInformation>(node.getConnectedNodes());
-		NodeInformation selectedNode = clusterNodes.get((int) Math.floor(Math.random() * clusterNodes.size()));
-
-		Registry registry = LocateRegistry.getRegistry(selectedNode.host(), selectedNode.port());
+		
+		moveAgents(1);
+	}
+	
+	public void moveAgents(int numberOfAgents){ 
 		try {
+			List<NodeAgent> agentsToMove = node.getAgentsTransfer().stopAndGet(numberOfAgents);
+			for(NodeAgent nodeAgent: agentsToMove)
+				System.out.println("AGENT: "+nodeAgent.node()+" "+nodeAgent.agent());
+			
+			List<NodeInformation> clusterNodes = new ArrayList<NodeInformation>(node.getConnectedNodes());
+			NodeInformation selectedNode = clusterNodes.get((int) Math.floor(Math.random() * clusterNodes.size()));
+			System.out.println("SELECTEDNODE: "+selectedNode);
+			
+			Registry registry = LocateRegistry.getRegistry(selectedNode.host(), selectedNode.port());
 			AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-			agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
-		} catch (NotBoundException e) {
+			agentsTransfer.runAgentsOnNode(agentsToMove);
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
