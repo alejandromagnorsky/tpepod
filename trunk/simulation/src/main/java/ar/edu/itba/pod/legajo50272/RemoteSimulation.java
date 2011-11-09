@@ -28,7 +28,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	private RemoteEventDispatcher remoteEventDispatcher;
 	private AgentsBalancer agentsBalancer;
 	private AgentsTransfer agentsTransfer;
-	private ExecutorService executor = Executors.newFixedThreadPool(4);
+	private ExecutorService executor = Executors.newCachedThreadPool();
 
 	// Creates a server node
 	public RemoteSimulation(String host, int port, String id,
@@ -67,6 +67,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 			registry.bind(DISTRIBUTED_EVENT_DISPATCHER, remoteEventDispatcher);
 			registry.bind(AGENTS_BALANCER, agentsBalancer);
 			registry.bind(AGENTS_TRANSFER, agentsTransfer);
+			registry.bind(STATISTIC_REPORTS, agentsTransfer);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -78,12 +79,12 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	}
 
 	@Override
-	protected void addAgentThread(AgentThread thread){
+	protected void addAgentThread(AgentThread thread) {
 		synchronized (this) {
 			super.addAgentThread(thread);
 		}
-	}	
-		
+	}
+
 	public Set<NodeInformation> getConnectedNodes() throws RemoteException {
 		return clusterAdministration.connectedNodes();
 	}
@@ -91,16 +92,21 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	public NodeInformation getNodeInformation() {
 		return nodeInformation;
 	}
-	
-	public AgentsTransfer getAgentsTransfer(){
+
+	public AgentsTransfer getAgentsTransfer() {
 		return agentsTransfer;
 	}
-	
-	public AgentsBalancer getAgentsBalancer(){
+
+	public AgentsBalancer getAgentsBalancer() {
 		return agentsBalancer;
 	}
 
 	public void execute(Runnable task) {
 		executor.execute(task);
+	}
+	
+	public boolean isCoordinator(){
+		NodeInformation coordinator = ((AgentsBalancerImpl)agentsBalancer).getCoordinator();
+		return coordinator != null && coordinator.equals(getNodeInformation());
 	}
 }

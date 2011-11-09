@@ -24,19 +24,21 @@ public class SimulationAppNode {
 	private static Integer port;
 	private static String serverHost;
 	private static Integer serverPort;
+	private static RemoteSimulation remoteSimulation;
+	private static Resource gold;
+	private static Resource steel;
+	private static Resource copper;
 
 	public static void main(String[] args) {
 		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration
 				.standardHours(6));
-		RemoteSimulation remoteSimulation;
-		String line, values[], agentName;
-		Agent agent;
-		int agentNumber;
-		Resource gold = new Resource("Mineral", "Gold");
-		Resource copper = new Resource("Mineral", "Copper");
-		Resource steel = new Resource("Alloy", "Steel");
+		String line, values[];
+
+		gold = new Resource("Mineral", "Gold");
+		copper = new Resource("Mineral", "Copper");
+		steel = new Resource("Alloy", "Steel");
 		loadFile();
-		
+
 		if (host == null || port == null) {
 			System.out.println("Enter your host and your port (host:port)");
 			line = readLine();
@@ -69,53 +71,64 @@ public class SimulationAppNode {
 
 		remoteSimulation.start(Duration.standardMinutes(10));
 
-		System.out
-				.println("Type of agents: cc:CooperConsumer / sc:SteelConsumer / gc:GoldConsumer / cm:CopperMine / sm:SilverMine / gm:GoldMine");
-		System.out.println("Add agents: add type,rate,amount");
+		displayInstructions();
 		while (true) {
 			try {
 				line = readLine();
-				if (line.equals("choose"))
-					((AgentsBalancerImpl)remoteSimulation.getAgentsBalancer()).chooseCoordinator();
-				else if(line.equals("move"))
-					((AgentsBalancerImpl)remoteSimulation.getAgentsBalancer()).moveAgents(1);
 				values = line.split(" ");
-				if (values[0].equals("add")) {
-					values = values[1].split(",");
-					String agentType = values[0];
-					Duration rate = Duration.standardDays(Integer
-							.valueOf(values[1]));
-					int amount = Integer.valueOf(values[2]);
-					agentNumber = (int) Math.floor(Math.random() * 100);
-					if (agentType.equals("cc")) {
-						agentName = "copper consumer" + agentNumber;
-						agent = new Consumer(agentName, copper, rate, amount);
-					} else if (agentType.equals("sc")) {
-						agentName = "steel consumer" + agentNumber;
-						agent = new Consumer(agentName, steel, rate, amount);
-					} else if (agentType.equals("gc")) {
-						agentName = "gold consumer" + agentNumber;
-						agent = new Consumer(agentName, gold, rate, amount);
-					} else if (agentType.equals("cm")) {
-						agentName = "copper mine" + agentNumber;
-						agent = new Producer(agentName, copper, rate, amount);
-					} else if (agentType.equals("sm")) {
-						agentName = "silver mine" + agentNumber;
-						agent = new Producer(agentName, steel, rate, amount);
-					} else {
-						agentName = "gold mine" + agentNumber;
-						agent = new Producer(agentName, gold, rate, amount);
-					}
-					remoteSimulation.add(agent);
-					System.out.println("Added " + agentName);
-				}
+				if (line.equals("choose"))
+					((AgentsBalancerImpl) remoteSimulation.getAgentsBalancer())
+							.chooseCoordinator();
+				else if (line.equals("status"))
+					displayStatistics();
+				else if (values[0].equals("add"))
+					addAgent(values[1].split(","));			
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 
 		}
 	}
-
+	
+	private static void displayStatistics(){
+		System.out.println("------------------------------------------");
+		System.out.println("AGENTS RUNNING IN THIS NODE");
+		for(Agent agent: remoteSimulation.getAgentsRunning())
+			System.out.println(agent);
+		System.out.println("------------------------------------------");
+	}
+	
+	private static void addAgent(String values[]) {
+		String agentName;
+		Agent agent;
+		int agentNumber;
+		String agentType = values[0];
+		Duration rate = Duration.standardDays(Integer.valueOf(values[1]));
+		int amount = Integer.valueOf(values[2]);
+		agentNumber = (int) Math.floor(Math.random() * 100);
+		if (agentType.equals("cc")) {
+			agentName = "copper consumer" + agentNumber;
+			agent = new Consumer(agentName, copper, rate, amount);
+		} else if (agentType.equals("sc")) {
+			agentName = "steel consumer" + agentNumber;
+			agent = new Consumer(agentName, steel, rate, amount);
+		} else if (agentType.equals("gc")) {
+			agentName = "gold consumer" + agentNumber;
+			agent = new Consumer(agentName, gold, rate, amount);
+		} else if (agentType.equals("cm")) {
+			agentName = "copper mine" + agentNumber;
+			agent = new Producer(agentName, copper, rate, amount);
+		} else if (agentType.equals("sm")) {
+			agentName = "silver mine" + agentNumber;
+			agent = new Producer(agentName, steel, rate, amount);
+		} else {
+			agentName = "gold mine" + agentNumber;
+			agent = new Producer(agentName, gold, rate, amount);
+		}
+		remoteSimulation.add(agent);
+		System.out.println("Added " + agentName);
+	}
+	
 	private static String readLine() {
 		try {
 			return stdin.readLine();
@@ -128,7 +141,8 @@ public class SimulationAppNode {
 	private static void loadFile() {
 		Properties properties = new Properties();
 		try {
-			properties.load(new FileInputStream("src/main/resources/config.properties"));
+			properties.load(new FileInputStream(
+					"src/main/resources/config.properties"));
 			host = properties.getProperty("host");
 			port = Integer.valueOf(properties.getProperty("port"));
 			serverHost = properties.getProperty("serverHost");
@@ -136,5 +150,11 @@ public class SimulationAppNode {
 		} catch (Exception e) {
 			System.out.println("Error loading configuration file");
 		}
+	}
+
+	private static void displayInstructions() {
+		System.out
+				.println("Type of agents: cc:CooperConsumer / sc:SteelConsumer / gc:GoldConsumer / cm:CopperMine / sm:SilverMine / gm:GoldMine");
+		System.out.println("Add agents: add type,rate,amount");
 	}
 }

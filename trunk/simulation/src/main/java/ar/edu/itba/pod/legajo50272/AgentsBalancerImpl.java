@@ -114,12 +114,13 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 					e.printStackTrace();
 			}
 		}
-	}
-
+	}	
+	
 	public AgentsBalancerImpl(RemoteSimulation node) throws RemoteException {
 		super();
 		this.node = node;
 		node.execute(new ElectionTask());
+		node.execute(new BalancerTask(node));
 	}
 
 	// ¿Cual es el flujo para la seleccion de un coordinador?
@@ -173,8 +174,8 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
-		// if(!this.node.equals(coordinator))
-		// throw new NotCoordinatorException(coordinator);
+		//if(!node.isCoordinator())
+		//	throw new NotCoordinatorException(coordinator);
 		
 		moveAgents(1);
 	}
@@ -195,6 +196,10 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public NodeInformation getCoordinator(){
+		return coordinator;
 	}
 
 }
