@@ -76,7 +76,9 @@ public class SimulationAppNode {
 			try {
 				line = readLine();
 				if (line.equals("choose"))
-					remoteSimulation.chooseCoordinator();
+					((AgentsBalancerImpl)remoteSimulation.getAgentsBalancer()).chooseCoordinator();
+				else if(line.equals("move"))
+					((AgentsBalancerImpl)remoteSimulation.getAgentsBalancer()).moveAgents(1);
 				values = line.split(" ");
 				if (values[0].equals("add")) {
 					values = values[1].split(",");
