@@ -57,7 +57,7 @@ public class AgentsTransferImpl extends UnicastRemoteObject implements AgentsTra
 	public List<NodeAgent> stopAndGet(int numberOfAgents)
 			throws RemoteException {
 		List<NodeAgent> ans = new ArrayList<NodeAgent>();
-		synchronized (this) {
+		synchronized (this.node) {
 			List<Agent> agents = node.getAgentsRunning();
 			for (int i = 0; i < numberOfAgents; i++) {
 				ans.add(new NodeAgent(node.getNodeInformation(), agents.get(i)));
