@@ -33,6 +33,8 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	// The current node
 	private final RemoteSimulation node;
 	
+	
+	// ¿Los nodos a los cuales se les publica remotamente tienen que haber llamado antes a newEventsFor?
 	private class DispatcherTask implements Runnable {
 
 		@Override
