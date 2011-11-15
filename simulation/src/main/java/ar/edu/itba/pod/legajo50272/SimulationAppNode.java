@@ -49,12 +49,9 @@ public class SimulationAppNode {
 		System.out.println("Node id: "+ id);
 		System.out.println("Choose between create a group or connect to group (s/c)");
 		line = readLine();
-		if (line.equals("s")) {
+		if (line.equals("s")) 
 			remoteSimulation = new RemoteSimulation(host, port, id, timeMapper);
-			remoteSimulation.add(new Market("gold market", gold));
-			remoteSimulation.add(new Market("cooper market", copper));
-			remoteSimulation.add(new Market("steel market", steel));
-		} else {
+		else {
 			if (serverHost == null || serverPort == null) {
 				System.out.println("Enter host and port from the entry node (host:port)");
 				line = readLine();
@@ -62,11 +59,10 @@ public class SimulationAppNode {
 				serverHost = values[0];
 				serverPort = Integer.valueOf(values[1]);
 			}
-			remoteSimulation = new RemoteSimulation(host, port, id, serverHost,
-					serverPort, timeMapper);
+			remoteSimulation = new RemoteSimulation(host, port, id, serverHost, serverPort, timeMapper);
 		}
 
-		remoteSimulation.start(Duration.standardSeconds(15));
+		remoteSimulation.start(Duration.standardMinutes(10));
 
 		System.out.println("Type help to see the instructions");
 		while (true) {

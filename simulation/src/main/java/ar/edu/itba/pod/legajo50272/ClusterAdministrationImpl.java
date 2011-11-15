@@ -62,6 +62,8 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 
 	}
 
+	
+	// ¿Que pasa cuando el que es elegido como primer coordinador es el nodo que se esta agregando?
 	@Override
 	public Set<NodeInformation> addNewNode(NodeInformation nodeInformation)
 			throws RemoteException, NotBoundException {

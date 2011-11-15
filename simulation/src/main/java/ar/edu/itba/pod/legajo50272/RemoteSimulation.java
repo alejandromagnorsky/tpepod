@@ -83,7 +83,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	}
 	
 	public void addAgentToCluster(Agent agent){
-		addAgentToCluster(agent, this.getCoordinator());
+		addAgentToCluster(agent, this.chooseAndGetCoordinator());
 	}
 	
 	private void addAgentToCluster(Agent agent, NodeInformation coordinator){
@@ -137,12 +137,12 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 		((AgentsBalancerImpl)agentsBalancer).balanceAgents();	
 	}
 	
-	public NodeInformation getCoordinator(){
-		return ((AgentsBalancerImpl)agentsBalancer).getCoordinator();
+	public NodeInformation chooseAndGetCoordinator(){
+		return ((AgentsBalancerImpl)agentsBalancer).chooseAndGetCoordinator();
 	}
 	
 	public boolean isCoordinator(){
-		NodeInformation coordinator = this.getCoordinator();
+		NodeInformation coordinator = ((AgentsBalancerImpl)agentsBalancer).getCoordinator();
 		return coordinator != null && coordinator.equals(getNodeInformation());
 	}
 }

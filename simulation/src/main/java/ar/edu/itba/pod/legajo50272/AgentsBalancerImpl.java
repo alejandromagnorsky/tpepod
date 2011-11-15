@@ -198,7 +198,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
 		if(!node.isCoordinator())
-			throw new NotCoordinatorException(getCoordinator());
+			throw new NotCoordinatorException(chooseAndGetCoordinator());
 		
 		Integer min = null;
 		boolean assigned = false;
@@ -277,7 +277,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		this.node.execute(new ChooseCoordinatorTask());
 	}	
 	
-	public synchronized NodeInformation getCoordinator(){
+	public synchronized NodeInformation chooseAndGetCoordinator(){
 		if(coordinator == null) {
 			chooseCoordinator();
 			try {
@@ -286,6 +286,10 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 				e.printStackTrace();
 			}
 		}
+		return coordinator;
+	}
+	
+	public NodeInformation getCoordinator(){
 		return coordinator;
 	}
 }
