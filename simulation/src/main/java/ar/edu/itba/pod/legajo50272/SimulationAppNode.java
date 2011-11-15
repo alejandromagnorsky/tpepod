@@ -51,9 +51,9 @@ public class SimulationAppNode {
 		line = readLine();
 		if (line.equals("s")) {
 			remoteSimulation = new RemoteSimulation(host, port, id, timeMapper);
-		//	remoteSimulation.add(new Market("gold market", gold));
-		//	remoteSimulation.add(new Market("cooper market", copper));
-		//	remoteSimulation.add(new Market("steel market", steel));
+			remoteSimulation.add(new Market("gold market", gold));
+			remoteSimulation.add(new Market("cooper market", copper));
+			remoteSimulation.add(new Market("steel market", steel));
 		} else {
 			if (serverHost == null || serverPort == null) {
 				System.out.println("Enter host and port from the entry node (host:port)");
@@ -66,7 +66,7 @@ public class SimulationAppNode {
 					serverPort, timeMapper);
 		}
 
-		remoteSimulation.start(Duration.standardMinutes(10));
+		remoteSimulation.start(Duration.standardSeconds(15));
 
 		System.out.println("Type help to see the instructions");
 		while (true) {
@@ -152,8 +152,7 @@ public class SimulationAppNode {
 	private static void loadFile() {
 		Properties properties = new Properties();
 		try {
-			properties.load(new FileInputStream(
-					"src/main/resources/config.properties"));
+			properties.load(new FileInputStream("src/main/resources/config.properties"));
 			host = properties.getProperty("host");
 			port = Integer.valueOf(properties.getProperty("port"));
 			serverHost = properties.getProperty("serverHost");
