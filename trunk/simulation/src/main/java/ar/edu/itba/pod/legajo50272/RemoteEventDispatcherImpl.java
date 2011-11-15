@@ -43,22 +43,11 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 					EventInformation event = eventsToSend.take();
 					for(NodeInformation dest: node.getConnectedNodes())
 						if(!node.getNodeInformation().equals(dest)){
-							Integer index;
-							synchronized (indexPerNode) {
-								index = indexPerNode.get(dest);
-					            if(index == null) {
-					            	indexPerNode.put(dest, 0);
-					            	index = 0;
-					            }
-							}
-							if(event.equals(events.get(index))){
-								Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
-								RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
-								boolean received = remoteEventDispatcher.publish(event);
-								indexPerNode.put(dest, index+1);
-								if(!received && Math.random() > 0.5)
-									break;
-							}							
+							Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
+							RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
+							boolean received = remoteEventDispatcher.publish(event);
+							if(!received && Math.random() > 0.5)
+								break;											
 						}
 				}
 			} catch (InterruptedException e) {
