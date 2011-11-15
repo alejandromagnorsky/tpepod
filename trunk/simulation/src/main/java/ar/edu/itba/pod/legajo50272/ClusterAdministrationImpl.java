@@ -67,6 +67,8 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 			throws RemoteException, NotBoundException {
 		if (!node.getNodeInformation().equals(nodeInformation)
 				&& connectedNodes.add(nodeInformation)) {
+			if(this.node.isCoordinator())
+				this.node.balanceAgents();
 			for (NodeInformation connectedNode : connectedNodes) {
 				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
 				ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);

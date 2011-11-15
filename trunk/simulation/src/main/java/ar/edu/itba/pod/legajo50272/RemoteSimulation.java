@@ -7,6 +7,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.joda.time.Duration;
+
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.balance.api.NodeAgent;
@@ -104,6 +106,13 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 		}
 	}
 
+	@Override
+	public void start(final Duration duration){
+		synchronized (this) {
+			super.start(duration);
+		}		
+	}
+	
 	public Set<NodeInformation> getConnectedNodes() throws RemoteException {
 		return clusterAdministration.connectedNodes();
 	}
@@ -122,6 +131,10 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 
 	public void execute(Runnable task) {
 		executor.execute(task);
+	}
+	
+	public void balanceAgents(){
+		((AgentsBalancerImpl)agentsBalancer).balanceAgents();	
 	}
 	
 	public NodeInformation getCoordinator(){
