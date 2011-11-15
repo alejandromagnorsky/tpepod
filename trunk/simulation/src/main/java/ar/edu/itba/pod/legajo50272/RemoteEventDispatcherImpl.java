@@ -34,7 +34,6 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	private final RemoteSimulation node;
 	
 	
-	// ¿Los nodos a los cuales se les publica remotamente tienen que haber llamado antes a newEventsFor?
 	private class DispatcherTask implements Runnable {
 
 		@Override
@@ -42,9 +41,16 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 			try {
 				while(true){
 					EventInformation event = eventsToSend.take();
-					for(NodeInformation dest: indexPerNode.keySet())
-						synchronized (indexPerNode) {
-							int index = indexPerNode.get(dest);
+					for(NodeInformation dest: node.getConnectedNodes())
+						if(!node.getNodeInformation().equals(dest)){
+							Integer index;
+							synchronized (indexPerNode) {
+								index = indexPerNode.get(dest);
+					            if(index == null) {
+					            	indexPerNode.put(dest, 0);
+					            	index = 0;
+					            }
+							}
 							if(event.equals(events.get(index))){
 								Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
 								RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
@@ -52,7 +58,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 								indexPerNode.put(dest, index+1);
 								if(!received && Math.random() > 0.5)
 									break;
-							}
+							}							
 						}
 				}
 			} catch (InterruptedException e) {
