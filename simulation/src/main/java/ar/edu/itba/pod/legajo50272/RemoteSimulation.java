@@ -9,10 +9,13 @@ import java.util.concurrent.Executors;
 
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
+import ar.edu.itba.balance.api.NodeAgent;
+import ar.edu.itba.balance.api.NotCoordinatorException;
 import ar.edu.itba.event.RemoteEventDispatcher;
 import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
 import ar.edu.itba.node.api.ClusterAdministration;
+import ar.edu.itba.pod.agent.runner.Agent;
 import ar.edu.itba.pod.agent.runner.Simulation;
 import ar.edu.itba.pod.multithread.AgentThread;
 import ar.edu.itba.pod.multithread.EventDispatcher;
@@ -61,8 +64,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 			remoteEventDispatcher = new RemoteEventDispatcherImpl(this);
 			agentsBalancer = new AgentsBalancerImpl(this);
 			agentsTransfer = new AgentsTransferImpl(this);
-			Registry registry = LocateRegistry.createRegistry(nodeInformation
-					.port());
+			Registry registry = LocateRegistry.createRegistry(nodeInformation.port());
 			registry.bind(CLUSTER_COMUNICATION, clusterAdministration);
 			registry.bind(DISTRIBUTED_EVENT_DISPATCHER, remoteEventDispatcher);
 			registry.bind(AGENTS_BALANCER, agentsBalancer);
@@ -76,6 +78,23 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	@Override
 	public EventDispatcher dispatcher() {
 		return (EventDispatcher) remoteEventDispatcher;
+	}
+	
+	public void addAgentToCluster(Agent agent){
+		addAgentToCluster(agent, this.getCoordinator());
+	}
+	
+	private void addAgentToCluster(Agent agent, NodeInformation coordinator){
+		try {
+			Registry registry = LocateRegistry.getRegistry(coordinator.host(), coordinator.port());
+			AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
+			agentsBalancer.addAgentToCluster(new NodeAgent(null, agent));
+		} catch (NotCoordinatorException e) {
+			e.printStackTrace();
+			this.addAgentToCluster(agent, e.getNewCoordinator());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -105,8 +124,12 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 		executor.execute(task);
 	}
 	
+	public NodeInformation getCoordinator(){
+		return ((AgentsBalancerImpl)agentsBalancer).getCoordinator();
+	}
+	
 	public boolean isCoordinator(){
-		NodeInformation coordinator = ((AgentsBalancerImpl)agentsBalancer).getCoordinator();
+		NodeInformation coordinator = this.getCoordinator();
 		return coordinator != null && coordinator.equals(getNodeInformation());
 	}
 }

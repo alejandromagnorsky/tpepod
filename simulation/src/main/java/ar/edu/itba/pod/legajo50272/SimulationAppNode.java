@@ -51,9 +51,9 @@ public class SimulationAppNode {
 		line = readLine();
 		if (line.equals("s")) {
 			remoteSimulation = new RemoteSimulation(host, port, id, timeMapper);
-			remoteSimulation.add(new Market("gold market", gold));
-			remoteSimulation.add(new Market("cooper market", copper));
-			remoteSimulation.add(new Market("steel market", steel));
+		//	remoteSimulation.add(new Market("gold market", gold));
+		//	remoteSimulation.add(new Market("cooper market", copper));
+		//	remoteSimulation.add(new Market("steel market", steel));
 		} else {
 			if (serverHost == null || serverPort == null) {
 				System.out.println("Enter host and port from the entry node (host:port)");
@@ -73,9 +73,7 @@ public class SimulationAppNode {
 			try {
 				line = readLine();
 				values = line.split(" ");
-				if (line.equals("choose"))
-					((AgentsBalancerImpl) remoteSimulation.getAgentsBalancer()).chooseCoordinator();
-				else if (line.equals("status"))
+				if (line.equals("status"))
 					displayStatistics();
 				else if (line.equals("help"))
 					displayInstructions();
@@ -137,7 +135,7 @@ public class SimulationAppNode {
 			}
 		}
 		if(agent != null){
-			remoteSimulation.add(agent);
+			remoteSimulation.addAgentToCluster(agent);
 			System.out.println("Added " + agentName);
 		}
 	}
