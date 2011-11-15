@@ -29,7 +29,6 @@ public class AgentsTransferImpl extends UnicastRemoteObject implements AgentsTra
 		this.node = node;
 	}
 	
-	// SetAgentQueue deberia ser parte de la interfaz
 	// ¿Coordinacion entre nodos?
 	@Override
 	public void runAgentsOnNode(List<NodeAgent> agents) throws RemoteException {

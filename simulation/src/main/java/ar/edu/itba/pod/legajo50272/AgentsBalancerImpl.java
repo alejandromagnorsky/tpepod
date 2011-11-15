@@ -26,8 +26,11 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	private NodeInformation coordinator;
 		
 	private volatile boolean electionLive;
+	
 	private BlockingQueue<BullyEvent> eventsForElection = new LinkedBlockingQueue<BullyEvent>();
 	private BlockingQueue<BullyEvent> electionEvents = new LinkedBlockingQueue<BullyEvent>();
+	private BlockingQueue<BullyEvent> eventsForCoordinator = new LinkedBlockingQueue<BullyEvent>();
+	private BlockingQueue<BullyEvent> coordinatorEvents = new LinkedBlockingQueue<BullyEvent>();
 	
 	
 	private class BullyEvent {
@@ -68,19 +71,42 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	}
 	
 	
-	private class ElectionTask implements Runnable {
+	private class ElectionBroadcastTask implements Runnable {
 
 		@Override
 		public void run() {
 			try {
 				while(true){
-					BullyEvent electionEvent = eventsForElection.take();
-											
+					BullyEvent electionEvent = eventsForElection.take();											
 					for (NodeInformation dest : node.getConnectedNodes()) {
 						if(!dest.equals(node.getNodeInformation())){
 							Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
 							AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
 							agentsBalancer.bullyElection(electionEvent.getNode(), electionEvent.getTimestamp());
+						}
+					}
+				}
+			} catch (InterruptedException e) {
+				return;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+	
+	private class CoordinatorBroadcastTask implements Runnable {
+
+		@Override
+		public void run() {
+			try {
+				while(true){
+					BullyEvent coordinatorEvent = eventsForCoordinator.take();											
+					for (NodeInformation dest : node.getConnectedNodes()) {
+						if(!dest.equals(node.getNodeInformation())){
+							Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
+							AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
+							agentsBalancer.bullyCoordinator(coordinatorEvent.getNode(), coordinatorEvent.getTimestamp());
 						}
 					}
 				}
@@ -102,7 +128,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 				electionLive = true;
 				bullyElection(node.getNodeInformation(), System.nanoTime());
 				// Wait until all the nodes received the election message
-				Thread.sleep(2000);
+				Thread.sleep(10000);
 				// Check if any node has bullied this node
 				if(electionLive){
 					bullyCoordinator(node.getNodeInformation(), System.nanoTime());
@@ -114,16 +140,17 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 					e.printStackTrace();
 			}
 		}
+		
 	}	
 	
 	public AgentsBalancerImpl(RemoteSimulation node) throws RemoteException {
 		super();
 		this.node = node;
-		node.execute(new ElectionTask());
-		node.execute(new BalancerTask(node));
+		node.execute(new ElectionBroadcastTask());
+		node.execute(new CoordinatorBroadcastTask());
+		//node.execute(new BalancerTask(node));
 	}
 
-	// ¿Cual es el flujo para la seleccion de un coordinador?
 	@Override
 	public synchronized void bullyElection(NodeInformation node, long timestamp)
 			throws RemoteException {
@@ -138,7 +165,8 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 				} catch (NotBoundException e) {
 					e.printStackTrace();
 				}
-				chooseCoordinator();
+				if(!electionLive)
+					chooseCoordinator();
 			} else {
 				System.out.println("BULLY EVENT: "+ electionEvent.getNode()+","+electionEvent.getTimestamp());
 				eventsForElection.add(electionEvent);
@@ -146,10 +174,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		}
 	}
 	
-	public void chooseCoordinator(){
-		node.execute(new ChooseCoordinatorTask());
-	}
-
 	@Override
 	public void bullyOk(NodeInformation node) throws RemoteException {
 		electionLive = false;
@@ -157,10 +181,15 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	}
 
 	@Override
-	public void bullyCoordinator(NodeInformation node, long timestamp)
+	public synchronized void bullyCoordinator(NodeInformation node, long timestamp)
 			throws RemoteException {
-		System.out.println("COORDINADOR: "+node);
-		this.coordinator = node;
+		BullyEvent coordinatorEvent = new BullyEvent(node, timestamp);
+		if(!coordinatorEvents.contains(coordinatorEvent)){
+			this.coordinator = node;
+			System.out.println("COORDINATOR: "+this.coordinator);			
+			coordinatorEvents.add(coordinatorEvent);			
+			eventsForCoordinator.add(coordinatorEvent);						
+		}
 	}
 
 	@Override
@@ -170,7 +199,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 
 	}
 
-	// ¿El agent tiene que obtenerse de los agentsRunning y removerlo usando un nuevo stopAndGet(Agent agent)?
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
@@ -184,7 +212,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		try {
 			List<NodeAgent> agentsToMove = node.getAgentsTransfer().stopAndGet(numberOfAgents);
 			for(NodeAgent nodeAgent: agentsToMove)
-				System.out.println("AGENT: "+nodeAgent.node()+" "+nodeAgent.agent());
+				System.out.println("AGENT TO MOVE: "+nodeAgent.node()+" "+nodeAgent.agent());
 			
 			List<NodeInformation> clusterNodes = new ArrayList<NodeInformation>(node.getConnectedNodes());
 			NodeInformation selectedNode = clusterNodes.get((int) Math.floor(Math.random() * clusterNodes.size()));
@@ -196,6 +224,10 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void chooseCoordinator(){
+		node.execute(new ChooseCoordinatorTask());
 	}
 	
 	public NodeInformation getCoordinator(){

@@ -34,7 +34,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	private final RemoteSimulation node;
 	
 	
-	private class DispatcherTask implements Runnable {
+	private class EventBroadcastTask implements Runnable {
 
 		@Override
 		public void run() {
@@ -42,7 +42,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 				while(true){
 					EventInformation event = eventsToSend.take();
 					for(NodeInformation dest: node.getConnectedNodes())
-						if(!node.getNodeInformation().equals(dest)){
+						if(!dest.equals(node.getNodeInformation())){
 							Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
 							RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
 							boolean received = remoteEventDispatcher.publish(event);
@@ -92,7 +92,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		super();
 		UnicastRemoteObject.exportObject(this, 0);
 		this.node = node;
-		node.execute(new DispatcherTask());
+		node.execute(new EventBroadcastTask());
 		node.execute(new CheckerTask());
 	}
 
