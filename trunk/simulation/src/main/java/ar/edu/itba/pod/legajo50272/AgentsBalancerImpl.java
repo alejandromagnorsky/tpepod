@@ -6,9 +6,14 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
@@ -24,13 +29,15 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	private final RemoteSimulation node;
 	// The coordinator of the cluster
 	private NodeInformation coordinator;
-		
+	private Semaphore chooseCoordinatorMutex = new Semaphore(1);
+	
+	
 	private volatile boolean electionLive;
 	
 	private BlockingQueue<BullyEvent> eventsForElection = new LinkedBlockingQueue<BullyEvent>();
-	private BlockingQueue<BullyEvent> electionEvents = new LinkedBlockingQueue<BullyEvent>();
+	private Set<BullyEvent> electionEvents = Collections.synchronizedSet(new HashSet<BullyEvent>());
 	private BlockingQueue<BullyEvent> eventsForCoordinator = new LinkedBlockingQueue<BullyEvent>();
-	private BlockingQueue<BullyEvent> coordinatorEvents = new LinkedBlockingQueue<BullyEvent>();
+	private Set<BullyEvent> coordinatorEvents = Collections.synchronizedSet(new HashSet<BullyEvent>());
 	
 	
 	private class BullyEvent {
@@ -51,6 +58,15 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		}
 
 		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((node == null) ? 0 : node.hashCode());
+			result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
+			return result;
+		}
+
+		@Override
 		public boolean equals(Object obj) {
 			if (this == obj)
 				return true;
@@ -68,6 +84,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 				return false;
 			return true;
 		}
+		
 	}
 	
 	
@@ -78,13 +95,12 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 			try {
 				while(true){
 					BullyEvent electionEvent = eventsForElection.take();											
-					for (NodeInformation dest : node.getConnectedNodes()) {
+					for (NodeInformation dest : node.getConnectedNodes()) 
 						if(!dest.equals(node.getNodeInformation())){
 							Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
 							AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
 							agentsBalancer.bullyElection(electionEvent.getNode(), electionEvent.getTimestamp());
-						}
-					}
+						}					
 				}
 			} catch (InterruptedException e) {
 				return;
@@ -102,13 +118,12 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 			try {
 				while(true){
 					BullyEvent coordinatorEvent = eventsForCoordinator.take();											
-					for (NodeInformation dest : node.getConnectedNodes()) {
+					for (NodeInformation dest : node.getConnectedNodes())
 						if(!dest.equals(node.getNodeInformation())){
 							Registry registry = LocateRegistry.getRegistry(dest.host(), dest.port());
 							AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
 							agentsBalancer.bullyCoordinator(coordinatorEvent.getNode(), coordinatorEvent.getTimestamp());
 						}
-					}
 				}
 			} catch (InterruptedException e) {
 				return;
@@ -119,44 +134,24 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 
 	}
 
-	private class ChooseCoordinatorTask implements Runnable {
-
-		@Override
-		public void run() {
-			try {
-				System.out.println("CHOOSING");
-				electionLive = true;
-				bullyElection(node.getNodeInformation(), System.nanoTime());
-				// Wait until all the nodes received the election message
-				Thread.sleep(10000);
-				// Check if any node has bullied this node
-				if(electionLive){
-					bullyCoordinator(node.getNodeInformation(), System.nanoTime());
-					electionLive = false;
-				}
-			} catch (InterruptedException e) {
-				return;
-			} catch (Exception e) {
-					e.printStackTrace();
-			}
-		}
-		
-	}	
-	
 	public AgentsBalancerImpl(RemoteSimulation node) throws RemoteException {
 		super();
 		this.node = node;
+		try {
+			chooseCoordinatorMutex.acquire();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		node.execute(new ElectionBroadcastTask());
 		node.execute(new CoordinatorBroadcastTask());
-		//node.execute(new BalancerTask(node));
 	}
 
 	@Override
-	public synchronized void bullyElection(NodeInformation node, long timestamp)
+	public void bullyElection(NodeInformation node, long timestamp)
 			throws RemoteException {
 		BullyEvent electionEvent = new BullyEvent(node, timestamp);
-		if(!electionEvents.contains(electionEvent)){
-			electionEvents.add(electionEvent);			
+		if(electionEvents.add(electionEvent)){
 			if (this.node.getNodeInformation().id().compareTo(node.id()) > 0) {
 				Registry registry = LocateRegistry.getRegistry(node.host(),	node.port());
 				try {
@@ -170,7 +165,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 			} else {
 				System.out.println("BULLY EVENT: "+ electionEvent.getNode()+","+electionEvent.getTimestamp());
 				eventsForElection.add(electionEvent);
-			}			
+			}
 		}
 	}
 	
@@ -181,14 +176,14 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	}
 
 	@Override
-	public synchronized void bullyCoordinator(NodeInformation node, long timestamp)
+	public void bullyCoordinator(NodeInformation node, long timestamp)
 			throws RemoteException {
 		BullyEvent coordinatorEvent = new BullyEvent(node, timestamp);
-		if(!coordinatorEvents.contains(coordinatorEvent)){
+		if(coordinatorEvents.add(coordinatorEvent)){
 			this.coordinator = node;
 			System.out.println("COORDINATOR: "+this.coordinator);			
-			coordinatorEvents.add(coordinatorEvent);			
-			eventsForCoordinator.add(coordinatorEvent);						
+			eventsForCoordinator.add(coordinatorEvent);
+			chooseCoordinatorMutex.release();
 		}
 	}
 
@@ -202,10 +197,36 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
-		//if(!node.isCoordinator())
-		//	throw new NotCoordinatorException(coordinator);
+		if(!node.isCoordinator())
+			throw new NotCoordinatorException(getCoordinator());
 		
-		moveAgents(1);
+		Integer min = null;
+		boolean assigned = false;
+		for(NodeInformation connectedNode: node.getConnectedNodes()){
+			Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+			try {
+				AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+				if(min == null)
+					min = agentsTransfer.getNumberOfAgents();
+				else if(agentsTransfer.getNumberOfAgents() < min){
+					agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
+					assigned = true;
+					break;
+				}
+			} catch (NotBoundException e) {
+				e.printStackTrace();
+			}
+		}
+		if(!assigned){
+			NodeInformation selectedNode = node.getConnectedNodes().iterator().next();
+			Registry registry = LocateRegistry.getRegistry(selectedNode.host(), selectedNode.port());
+			try {
+				AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+				agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
+			} catch (NotBoundException e) {
+				e.printStackTrace();
+			}					
+		}
 	}
 	
 	public void moveAgents(int numberOfAgents){ 
@@ -226,12 +247,45 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		}
 	}
 	
-	public void chooseCoordinator(){
-		node.execute(new ChooseCoordinatorTask());
+	public void balanceAgents(){
+		node.execute(new BalanceTask(this.node));				
 	}
 	
-	public NodeInformation getCoordinator(){
+	public class ChooseCoordinatorTask implements Runnable {
+		public void run(){
+			try {
+				System.out.println("CHOOSING");
+				electionLive = true;
+				bullyElection(node.getNodeInformation(), System.nanoTime());
+				// Wait until all the nodes received the election message
+				Thread.sleep(4000);
+				// Check if any node has bullied this node
+				if(electionLive){
+					bullyCoordinator(node.getNodeInformation(), System.nanoTime());
+					electionLive = false;
+					balanceAgents();
+				}
+			} catch (InterruptedException e) {
+				return;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void chooseCoordinator(){
+		this.node.execute(new ChooseCoordinatorTask());
+	}	
+	
+	public synchronized NodeInformation getCoordinator(){
+		if(coordinator == null) {
+			chooseCoordinator();
+			try {
+				chooseCoordinatorMutex.acquire();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		return coordinator;
 	}
-
 }

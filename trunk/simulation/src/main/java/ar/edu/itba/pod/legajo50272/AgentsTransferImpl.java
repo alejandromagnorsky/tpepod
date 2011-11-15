@@ -32,15 +32,17 @@ public class AgentsTransferImpl extends UnicastRemoteObject implements AgentsTra
 	// ¿Coordinacion entre nodos?
 	@Override
 	public void runAgentsOnNode(List<NodeAgent> agents) throws RemoteException {
-		for(NodeAgent nodeAgent: agents){
-			Registry registry = LocateRegistry.getRegistry(nodeAgent.node().host(), nodeAgent.node().port());
-			try {
-				RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
-				BlockingQueue<Object> agentEvents = remoteEventDispatcher.moveQueueFor(nodeAgent.agent());
-				((MultiThreadEventDispatcher)node.dispatcher()).setAgentQueue(nodeAgent.agent(), agentEvents);
-			} catch (NotBoundException e) {
-				e.printStackTrace();
-			}			
+		for(NodeAgent nodeAgent : agents){
+			if(nodeAgent.node() != null) {
+				Registry registry = LocateRegistry.getRegistry(nodeAgent.node().host(), nodeAgent.node().port());
+				try {
+					RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
+					BlockingQueue<Object> agentEvents = remoteEventDispatcher.moveQueueFor(nodeAgent.agent());
+					((MultiThreadEventDispatcher)node.dispatcher()).setAgentQueue(nodeAgent.agent(), agentEvents);
+				} catch (NotBoundException e) {
+					e.printStackTrace();
+				}			
+			}
 		}
 		
 		for (NodeAgent nodeAgent : agents)
