@@ -44,8 +44,9 @@ public class SimulationAppNode {
 			host = values[0];
 			port = Integer.valueOf(values[1]);
 		}
-		String id = host + port;
+		String id = host + ":" + port;
 
+		System.out.println("Node id: "+ id);
 		System.out.println("Choose between create a group or connect to group (s/c)");
 		line = readLine();
 		if (line.equals("s")) {
