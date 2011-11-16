@@ -4,10 +4,12 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.rmi.RemoteException;
 import java.util.Properties;
 
 import org.joda.time.Duration;
 
+import ar.edu.itba.node.NodeInformation;
 import ar.edu.itba.pod.agent.market.Consumer;
 import ar.edu.itba.pod.agent.market.Market;
 import ar.edu.itba.pod.agent.market.Producer;
@@ -73,6 +75,10 @@ public class SimulationAppNode {
 					displayStatistics();
 				else if (line.equals("help"))
 					displayInstructions();
+				else if(line.equals("shutdown")){
+					shutdown();
+					System.exit(0);
+				}
 				else if (values[0].equals("add"))
 					addAgent(values[1].split(","));			
 			} catch (Exception e) {
@@ -87,6 +93,13 @@ public class SimulationAppNode {
 		System.out.println("AGENTS RUNNING IN THIS NODE");
 		for(Agent agent: remoteSimulation.getAgentsRunning())
 			System.out.println(agent);
+		System.out.println("CONNECTED NODES");
+		try {
+			for(NodeInformation connectedNode: remoteSimulation.getConnectedNodes())
+				System.out.println(connectedNode);
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
 		System.out.println("----------------------------------------------------");
 	}
 	
@@ -136,6 +149,12 @@ public class SimulationAppNode {
 		}
 	}
 	
+	private static void shutdown() {
+		System.out.println("SHUTTING DOWN");
+		remoteSimulation.stop();
+		System.out.println("FINISHED");		
+	}
+	
 	private static String readLine() {
 		try {
 			return stdin.readLine();
@@ -161,7 +180,7 @@ public class SimulationAppNode {
 	private static void displayInstructions() {
 		System.out.println("Commands");
 		System.out.println("- status");
-		System.out.println("	Display the agents running in this node");
+		System.out.println("	Display the agents running in this node and the nodes in the cluster");
 		System.out.println("- add");
 		System.out.println("	Add agent to the simulation specifying type");
 		System.out.println("	If the agent is a consumer or a producer, include rate in days and the amount of resources");
@@ -170,5 +189,7 @@ public class SimulationAppNode {
 		System.out.println("		Producers: cp:CopperMine / sp:SilverMine / gp:GoldMine");
 		System.out.println("		Markets: cm:CopperMarket / sm:SilverMarket / gm:GoldMarket");
 		System.out.println("	Example: add cc,1,5");
+		System.out.println("- shutdown");
+		System.out.println("    Stop and redistribute the agents running in this node");
 	}
 }

@@ -8,8 +8,10 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -190,8 +192,45 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	@Override
 	public void shutdown(List<NodeAgent> agents) throws RemoteException,
 			NotCoordinatorException {
-		// TODO Auto-generated method stub
-
+		if(!node.isCoordinator())
+			throw new NotCoordinatorException(chooseAndGetCoordinator());
+		
+		if(!agents.isEmpty() && !this.node.getConnectedNodes().isEmpty()) {
+			PriorityQueue<EnhancedNodeInformation> agentsQuantPerNode = new PriorityQueue<EnhancedNodeInformation>(10, new AscendantSort());
+			for(NodeInformation connectedNode: node.getConnectedNodes()){
+				if(!agents.get(0).node().equals(connectedNode)) {
+					Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+					try {
+						AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+						EnhancedNodeInformation enhancedNode = new EnhancedNodeInformation(connectedNode, agentsTransfer.getNumberOfAgents());
+						agentsQuantPerNode.add(enhancedNode);
+					} catch (NotBoundException e) {
+						e.printStackTrace();
+					}				
+				}
+			}
+			
+			if(!agentsQuantPerNode.isEmpty()){
+				int assigned = 0;			
+				while(assigned < agents.size()) {
+					EnhancedNodeInformation enhancedNode = agentsQuantPerNode.remove();
+					NodeInformation nodeInformation = enhancedNode.getNodeInformation();
+					int agentsQuant = enhancedNode.getAgentsQuant();
+					
+					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+					try {
+						AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+						agentsTransfer.runAgentsOnNode(Arrays.asList(agents.get(assigned)));
+						assigned++;
+						agentsQuant++;
+						enhancedNode.setAgentsQuant(agentsQuant);
+						agentsQuantPerNode.add(enhancedNode);
+					} catch (NotBoundException e) {
+							e.printStackTrace();
+					}
+				}
+			}
+		}		
 	}
 
 	@Override
@@ -231,7 +270,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	
 	public void moveAgents(int numberOfAgents){ 
 		try {
-			List<NodeAgent> agentsToMove = node.getAgentsTransfer().stopAndGet(numberOfAgents);
+			List<NodeAgent> agentsToMove = node.stopAndGet(numberOfAgents);
 			for(NodeAgent nodeAgent: agentsToMove)
 				System.out.println("AGENT TO MOVE: "+nodeAgent.node()+" "+nodeAgent.agent());
 			
@@ -291,5 +330,15 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	
 	public NodeInformation getCoordinator(){
 		return coordinator;
+	}
+	
+	public class AscendantSort implements Comparator<EnhancedNodeInformation> {
+
+		@Override
+		public int compare(EnhancedNodeInformation o1,
+				EnhancedNodeInformation o2) {
+			return o1.getAgentsQuant() - o2.getAgentsQuant();
+		}
+		
 	}
 }

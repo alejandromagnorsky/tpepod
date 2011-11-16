@@ -3,6 +3,7 @@ package ar.edu.itba.pod.legajo50272;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -16,32 +17,9 @@ import ar.edu.itba.node.NodeInformation;
 public class BalanceTask implements Runnable {
 
 	private RemoteSimulation node;
-	private PriorityQueue<EnhancedNodeInformation> agentsQuantPerNode = new PriorityQueue<EnhancedNodeInformation>();
+	private PriorityQueue<EnhancedNodeInformation> agentsQuantPerNode = new PriorityQueue<EnhancedNodeInformation>(10, new DescendantSort());
 	private List<NodeAgent> agentsForNode = new ArrayList<NodeAgent>();
 	private Queue<NodeAgent> agentsToMove = new LinkedList<NodeAgent>();
-	
-	public class EnhancedNodeInformation implements Comparable<EnhancedNodeInformation> {
-		private NodeInformation nodeInformation;
-		private int agentsQuant;
-		
-		public EnhancedNodeInformation(NodeInformation nodeInformation, int agentsQuant) {
-			this.nodeInformation = nodeInformation;
-			this.agentsQuant = agentsQuant;
-		}
-
-		public NodeInformation getNodeInformation() {
-			return nodeInformation;
-		}
-
-		public Integer getAgentsQuant() {
-			return agentsQuant;
-		}
-
-		@Override
-		public int compareTo(EnhancedNodeInformation o) {
-			return o.getAgentsQuant() - this.agentsQuant;
-		}
-	}
 	
 	public BalanceTask(RemoteSimulation node){
 		super();
@@ -89,4 +67,14 @@ public class BalanceTask implements Runnable {
 		}				
 	}
 	
+	
+	public class DescendantSort implements Comparator<EnhancedNodeInformation> {
+
+		@Override
+		public int compare(EnhancedNodeInformation o1,
+				EnhancedNodeInformation o2) {
+			return o2.getAgentsQuant() - o1.getAgentsQuant();
+		}
+		
+	}
 }

@@ -3,9 +3,12 @@ package ar.edu.itba.pod.legajo50272;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.joda.time.Duration;
 
@@ -82,11 +85,11 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 		return (EventDispatcher) remoteEventDispatcher;
 	}
 	
-	public void addAgentToCluster(Agent agent){
+	public void addAgentToCluster(Agent agent) {
 		addAgentToCluster(agent, this.chooseAndGetCoordinator());
 	}
 	
-	private void addAgentToCluster(Agent agent, NodeInformation coordinator){
+	private void addAgentToCluster(Agent agent, NodeInformation coordinator) {
 		try {
 			Registry registry = LocateRegistry.getRegistry(coordinator.host(), coordinator.port());
 			AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
@@ -107,41 +110,68 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	}
 
 	@Override
-	public void start(final Duration duration){
+	public void start(final Duration duration) {
 		synchronized (this) {
 			super.start(duration);
 		}		
+	}
+	
+	@Override
+	public void stop() {
+		try {
+			shutdown(this.chooseAndGetCoordinator());
+			clusterAdministration.disconnectFromGroup(this.getNodeInformation());
+			executor.shutdownNow();
+			System.out.println("EXECUTOR: " + executor.awaitTermination(5, TimeUnit.SECONDS));
+			super.stop();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	// Considerar el caso en que se vaya el coordinador
+	private void shutdown(NodeInformation coordinator) {
+		try {
+			Registry registry = LocateRegistry.getRegistry(coordinator.host(), coordinator.port());
+			AgentsBalancer agentsBalancer = (AgentsBalancer) registry.lookup(Node.AGENTS_BALANCER);
+			List<NodeAgent> nodeAgents = new ArrayList<NodeAgent>();
+			for(Agent agent: super.getAgentsRunning())
+				nodeAgents.add(new NodeAgent(this.getNodeInformation(), agent));
+			agentsBalancer.shutdown(nodeAgents);
+		} catch (NotCoordinatorException e) {
+			e.printStackTrace();
+			this.shutdown(e.getNewCoordinator());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	
+	public void execute(Runnable task) {
+		executor.execute(task);
+	}
+	
+	public NodeInformation getNodeInformation() {
+		return nodeInformation;
 	}
 	
 	public Set<NodeInformation> getConnectedNodes() throws RemoteException {
 		return clusterAdministration.connectedNodes();
 	}
 
-	public NodeInformation getNodeInformation() {
-		return nodeInformation;
+	public List<NodeAgent> stopAndGet(int numberOfAgents) throws RemoteException {
+		return agentsTransfer.stopAndGet(numberOfAgents);
 	}
 
-	public AgentsTransfer getAgentsTransfer() {
-		return agentsTransfer;
-	}
-
-	public AgentsBalancer getAgentsBalancer() {
-		return agentsBalancer;
-	}
-
-	public void execute(Runnable task) {
-		executor.execute(task);
-	}
-	
-	public void balanceAgents(){
+	public void balanceAgents() {
 		((AgentsBalancerImpl)agentsBalancer).balanceAgents();	
 	}
 	
-	public NodeInformation chooseAndGetCoordinator(){
+	public NodeInformation chooseAndGetCoordinator() {
 		return ((AgentsBalancerImpl)agentsBalancer).chooseAndGetCoordinator();
 	}
 	
-	public boolean isCoordinator(){
+	public boolean isCoordinator() {
 		NodeInformation coordinator = ((AgentsBalancerImpl)agentsBalancer).getCoordinator();
 		return coordinator != null && coordinator.equals(getNodeInformation());
 	}
