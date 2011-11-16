@@ -58,12 +58,15 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 	@Override
 	public void disconnectFromGroup(NodeInformation node)
 			throws RemoteException, NotBoundException {
-		// TODO Auto-generated method stub
-
+		if (connectedNodes.remove(node)) {
+			for (NodeInformation connectedNode : connectedNodes) {
+				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+				ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
+				cluster.disconnectFromGroup(node);
+			}
+		}
 	}
-
 	
-	// ¿Que pasa cuando el que es elegido como primer coordinador es el nodo que se esta agregando?
 	@Override
 	public Set<NodeInformation> addNewNode(NodeInformation nodeInformation)
 			throws RemoteException, NotBoundException {
