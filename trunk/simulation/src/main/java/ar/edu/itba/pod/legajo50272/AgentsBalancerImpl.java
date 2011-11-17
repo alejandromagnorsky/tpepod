@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
 
 import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
@@ -31,8 +31,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	private final RemoteSimulation node;
 	// The coordinator of the cluster
 	private NodeInformation coordinator;
-	private Semaphore chooseCoordinatorMutex = new Semaphore(1);
-	
+	private CountDownLatch chooseCoordinatorLatch = new CountDownLatch(1);
 	
 	private volatile boolean electionLive;
 	
@@ -139,12 +138,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	public AgentsBalancerImpl(RemoteSimulation node) throws RemoteException {
 		super();
 		this.node = node;
-		try {
-			chooseCoordinatorMutex.acquire();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		
 		node.execute(new ElectionBroadcastTask());
 		node.execute(new CoordinatorBroadcastTask());
 	}
@@ -185,7 +179,9 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 			this.coordinator = node;
 			System.out.println("COORDINATOR: "+this.coordinator);			
 			eventsForCoordinator.add(coordinatorEvent);
-			chooseCoordinatorMutex.release();
+			
+			chooseCoordinatorLatch.countDown();
+			chooseCoordinatorLatch = new CountDownLatch(1);
 		}
 	}
 
@@ -320,7 +316,7 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		if(coordinator == null) {
 			chooseCoordinator();
 			try {
-				chooseCoordinatorMutex.acquire();
+				chooseCoordinatorLatch.await();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -330,6 +326,10 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	
 	public NodeInformation getCoordinator(){
 		return coordinator;
+	}
+	
+	public void setCoordinator(NodeInformation coordinator) {
+		this.coordinator = coordinator;
 	}
 	
 	public class AscendantSort implements Comparator<EnhancedNodeInformation> {
