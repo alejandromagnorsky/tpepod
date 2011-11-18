@@ -19,6 +19,7 @@ public class BalanceTask implements Runnable {
 	private RemoteSimulation node;
 	private PriorityQueue<EnhancedNodeInformation> agentsQuantPerNode = new PriorityQueue<EnhancedNodeInformation>(10, new DescendantSort());
 	private List<NodeAgent> agentsForNode = new ArrayList<NodeAgent>();
+	private List<EnhancedNodeInformation> nodesToReceiveAgents = new ArrayList<EnhancedNodeInformation>();
 	private Queue<NodeAgent> agentsToMove = new LinkedList<NodeAgent>();
 	
 	public BalanceTask(RemoteSimulation node){
@@ -39,27 +40,44 @@ public class BalanceTask implements Runnable {
 			}
 			if(totalAgents > 1) {
 				int n = (int)Math.ceil(totalAgents/agentsQuantPerNode.size());
-				System.out.println("N: "+ n);
+				// Quantity of nodes that must have n agents after the balancing
+				int a = (int)totalAgents - agentsQuantPerNode.size() * (n - 1);
+				System.out.println("A: "+ a);	
 				
-				while(!agentsQuantPerNode.isEmpty()) {
+				while(!agentsQuantPerNode.isEmpty() && agentsQuantPerNode.peek().getAgentsQuant() >= n) {
 					EnhancedNodeInformation enhancedNode = agentsQuantPerNode.remove();
 					NodeInformation nodeInformation = enhancedNode.getNodeInformation();
 					int agentsQuant = enhancedNode.getAgentsQuant();
 						
-					if(agentsQuant != n){
-						Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
-						AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-						if(agentsQuant > n)
-							agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - n));						
-						else if(agentsQuant < n){
-							int min = Math.min(agentsToMove.size(), n - agentsQuant);
-							for(int i = 0; i < min; i++)
-								agentsForNode.add(agentsToMove.remove());
-							agentsTransfer.runAgentsOnNode(agentsForNode);
-							agentsForNode.clear();
-						}
+					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+					AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+					if(agentsQuant > n){
+						a--;
+						agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - n));					
+					} else if(agentsQuant == n) {
+						if(a > 0)
+							a--;
+						else
+							agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - 1));
 					}
 				}
+				
+				while(!agentsQuantPerNode.isEmpty())
+					nodesToReceiveAgents.add(agentsQuantPerNode.remove());
+				
+				for(int i = nodesToReceiveAgents.size() - 1; i >= 0; i--) {
+					EnhancedNodeInformation enhancedNode = nodesToReceiveAgents.get(i);
+					NodeInformation nodeInformation = enhancedNode.getNodeInformation();
+					int agentsQuant = enhancedNode.getAgentsQuant();
+					
+					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+					AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+					int min = Math.min(agentsToMove.size(), n - agentsQuant);
+					for(int j = 0; j < min; j++)
+						agentsForNode.add(agentsToMove.remove());
+					agentsTransfer.runAgentsOnNode(agentsForNode);
+					agentsForNode.clear();
+				}				
 			}
 			System.out.println("BALANCED");
 		} catch (Exception e) {

@@ -21,7 +21,7 @@ import com.google.common.collect.SetMultimap;
  * Event dispatcher
  */
 public class MultiThreadEventDispatcher implements EventDispatcher {
-	protected static final int QUEUE_SIZE = 256;
+	protected static final int QUEUE_SIZE = 2560;
 	
 	private SetMultimap<Class, Agent> listeners = Multimaps.synchronizedSetMultimap(HashMultimap.<Class, Agent>create());
 	private Map<Agent, BlockingQueue<Object>> queues = new MapMaker()
