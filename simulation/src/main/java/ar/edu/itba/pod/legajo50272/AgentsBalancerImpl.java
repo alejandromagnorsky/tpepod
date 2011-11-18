@@ -235,15 +235,23 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		if(!node.isCoordinator())
 			throw new NotCoordinatorException(chooseAndGetCoordinator());
 		
-		Integer min = null;
+		int min = 0;
+		AgentsTransfer randomNodeAgentsTransfer = null;
+		try {
+			NodeInformation randomNode = node.getConnectedNodes().iterator().next();
+			Registry registry = LocateRegistry.getRegistry(randomNode.host(), randomNode.port());
+			randomNodeAgentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+			min = randomNodeAgentsTransfer.getNumberOfAgents();
+		} catch (NotBoundException e) {
+			e.printStackTrace();
+		}	
+		
 		boolean assigned = false;
 		for(NodeInformation connectedNode: node.getConnectedNodes()){
 			Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
 			try {
 				AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-				if(min == null)
-					min = agentsTransfer.getNumberOfAgents();
-				else if(agentsTransfer.getNumberOfAgents() < min){
+				if(agentsTransfer.getNumberOfAgents() < min){
 					agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
 					assigned = true;
 					break;
@@ -252,16 +260,8 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 				e.printStackTrace();
 			}
 		}
-		if(!assigned){
-			NodeInformation selectedNode = node.getConnectedNodes().iterator().next();
-			Registry registry = LocateRegistry.getRegistry(selectedNode.host(), selectedNode.port());
-			try {
-				AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-				agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
-			} catch (NotBoundException e) {
-				e.printStackTrace();
-			}					
-		}
+		if(!assigned)
+			randomNodeAgentsTransfer.runAgentsOnNode(Arrays.asList(agent));		
 	}
 	
 	public void moveAgents(int numberOfAgents){ 

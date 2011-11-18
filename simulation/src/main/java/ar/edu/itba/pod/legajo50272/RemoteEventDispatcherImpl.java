@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -86,6 +87,42 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	}
 	
 	
+	public class CleanerTask implements Runnable {
+
+		@Override
+		public void run() {
+			try {
+				while(true){
+					Thread.sleep(1000);
+					int min = -1;
+					List<NodeInformation> nodesToRemove = new ArrayList<NodeInformation>();
+					synchronized (indexPerNode) {
+						if(!indexPerNode.isEmpty()){
+							for(NodeInformation nodeInformation: indexPerNode.keySet())
+								if(!node.getConnectedNodes().contains(nodeInformation))
+									nodesToRemove.add(nodeInformation);
+							for(NodeInformation nodeInformation: nodesToRemove)
+								indexPerNode.remove(nodeInformation);
+														
+							for(Integer lastMessageSended: indexPerNode.values())
+								if(min == -1 || lastMessageSended < min)
+									min = lastMessageSended;
+							for(int i = 0; i < min; i++)
+								events.remove(0);
+							for(Entry<NodeInformation, Integer> entry: indexPerNode.entrySet())
+								entry.setValue(entry.getValue() - min);							
+						}
+					}
+				}
+			} catch (InterruptedException e) {
+				return;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}			
+		}		
+	}
+	
+	
 
 	public RemoteEventDispatcherImpl(RemoteSimulation node)
 			throws RemoteException {
@@ -94,6 +131,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		this.node = node;
 		node.execute(new EventBroadcastTask());
 		node.execute(new CheckerTask());
+		//node.execute(new CleanerTask());
 	}
 
 	@Override
@@ -105,7 +143,9 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 			// Add to the queue of events to broadcast
 			this.eventsToSend.offer(event);
 			// Publish the event locally
+			System.out.println("publishing");
 			super.publish(event.source(), event.event());
+			System.out.println("published");
 			return true;
 		}
 		return false;
@@ -115,14 +155,14 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	public Set<EventInformation> newEventsFor(NodeInformation nodeInformation)
 			throws RemoteException {
 		Set<EventInformation> ans = new HashSet<EventInformation>();
-		int length = events.size();
 		synchronized (indexPerNode) {
+			int length = events.size();		
 			Integer index = indexPerNode.get(nodeInformation);
             if(index == null){
             	indexPerNode.put(nodeInformation, 0);
             	index = 0;
             }
-            if(index > length - 1)
+            if(index > length - 1) 
             	return ans;
             for(int i = index; i < length; i++)
             	ans.add(events.get(i));
