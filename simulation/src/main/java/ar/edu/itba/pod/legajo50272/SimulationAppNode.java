@@ -31,7 +31,7 @@ public class SimulationAppNode {
 	private static Resource copper;
 
 	public static void main(String[] args) {
-		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(6));
+		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(24));
 		String line, values[];
 
 		gold = new Resource("Mineral", "Gold");
@@ -64,29 +64,39 @@ public class SimulationAppNode {
 			remoteSimulation = new RemoteSimulation(host, port, id, serverHost, serverPort, timeMapper);
 		}
 
-		remoteSimulation.start(Duration.standardMinutes(10));
+		remoteSimulation.start(Duration.standardMinutes(100));
 
 		System.out.println("Type help to see the instructions");
-		while (true) {
-			try {
-				line = readLine();
-				values = line.split(" ");
-				if (line.equals("status"))
-					displayStatistics();
-				else if (line.equals("help"))
-					displayInstructions();
-				else if(line.equals("shutdown")){
-					shutdown();
-					System.exit(0);
+		
+		Thread parserThread = new Thread() {
+			
+			@Override
+			public void run() {
+				String line, values[];
+				while (true) {
+					try {
+						line = readLine();
+						values = line.split(" ");
+						if (line.equals("status"))
+							displayStatistics();
+						else if (line.equals("help"))
+							displayInstructions();
+						else if(line.equals("shutdown")){
+							shutdown();
+							System.exit(0);
+						}
+						else if (values[0].equals("add"))
+							addAgent(values[1].split(","));			
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
-				else if (values[0].equals("add"))
-					addAgent(values[1].split(","));			
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
-
-		}
+		};
+		parserThread.setDaemon(true);
+		parserThread.start();
 	}
+	
 	
 	private static void displayStatistics(){
 		System.out.println("----------------------------------------------------");
@@ -114,7 +124,7 @@ public class SimulationAppNode {
 				agentName = "copper market" + agentNumber;
 				agent = new Market(agentName, copper);
 			} else if (agentType.equals("sm")) {
-				agentName = "silver market" + agentNumber;
+				agentName = "steel market" + agentNumber;
 				agent = new Market(agentName, steel);
 			} else if (agentType.equals("gm")) {
 				agentName = "gold market" + agentNumber;
@@ -136,7 +146,7 @@ public class SimulationAppNode {
 				agentName = "copper mine" + agentNumber;
 				agent = new Producer(agentName, copper, rate, amount);
 			} else if (agentType.equals("sp")) {
-				agentName = "silver mine" + agentNumber;
+				agentName = "steel mine" + agentNumber;
 				agent = new Producer(agentName, steel, rate, amount);
 			} else if (agentType.equals("gp")) {
 				agentName = "gold mine" + agentNumber;
@@ -186,8 +196,8 @@ public class SimulationAppNode {
 		System.out.println("	If the agent is a consumer or a producer, include rate in days and the amount of resources");
 		System.out.println("	Type of agents:");
 		System.out.println("		Consumers: cc:CooperConsumer / sc:SteelConsumer / gc:GoldConsumer");
-		System.out.println("		Producers: cp:CopperMine / sp:SilverMine / gp:GoldMine");
-		System.out.println("		Markets: cm:CopperMarket / sm:SilverMarket / gm:GoldMarket");
+		System.out.println("		Producers: cp:CopperMine / sp:SteelMine / gp:GoldMine");
+		System.out.println("		Markets: cm:CopperMarket / sm:SteelMarket / gm:GoldMarket");
 		System.out.println("	Example: add cc,1,5");
 		System.out.println("- shutdown");
 		System.out.println("    Stop and redistribute the agents running in this node");

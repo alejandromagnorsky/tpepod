@@ -122,7 +122,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 			shutdown(this.chooseAndGetCoordinator());
 			clusterAdministration.disconnectFromGroup(this.getNodeInformation());
 			executor.shutdownNow();
-			System.out.println("EXECUTOR: " + executor.awaitTermination(5, TimeUnit.SECONDS));
+			executor.awaitTermination(5, TimeUnit.SECONDS);
 			super.stop();
 		} catch (Exception e) {
 			e.printStackTrace();

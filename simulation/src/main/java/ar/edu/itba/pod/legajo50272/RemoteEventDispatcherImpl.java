@@ -10,8 +10,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -29,6 +29,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 	private BlockingQueue<EventInformation> eventsToSend = new LinkedBlockingQueue<EventInformation>();
 	 // The history of events
     private List<EventInformation> events = Collections.synchronizedList(new ArrayList<EventInformation>());
+    private Set<EventInformation> eventsSet = Collections.synchronizedSet(new HashSet<EventInformation>());
 	// Current position in the history of events that has to be sent
     private Map<NodeInformation, Integer> indexPerNode = new ConcurrentHashMap<NodeInformation, Integer>();
 	// The current node
@@ -93,7 +94,7 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		public void run() {
 			try {
 				while(true){
-					Thread.sleep(1000);
+					Thread.sleep(60000);
 					int min = -1;
 					List<NodeInformation> nodesToRemove = new ArrayList<NodeInformation>();
 					synchronized (indexPerNode) {
@@ -131,21 +132,19 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		this.node = node;
 		node.execute(new EventBroadcastTask());
 		node.execute(new CheckerTask());
-		//node.execute(new CleanerTask());
+		node.execute(new CleanerTask());
 	}
 
 	@Override
-	public synchronized boolean publish(EventInformation event) throws RemoteException,
+	public boolean publish(EventInformation event) throws RemoteException,
 			InterruptedException {
-		 if(!events.contains(event)){
+		 if(eventsSet.add(event)){
 			// Append the event to the history of events
 			this.events.add(event);
 			// Add to the queue of events to broadcast
 			this.eventsToSend.offer(event);
 			// Publish the event locally
-			System.out.println("publishing");
 			super.publish(event.source(), event.event());
-			System.out.println("published");
 			return true;
 		}
 		return false;
