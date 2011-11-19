@@ -52,7 +52,6 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 		ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
 		this.connectedNodes = new CopyOnWriteArraySet<NodeInformation>(cluster.addNewNode(node.getNodeInformation()));
 		this.groupId = cluster.getGroupId();
-		System.out.println(connectedNodes);
 	}
 
 	@Override

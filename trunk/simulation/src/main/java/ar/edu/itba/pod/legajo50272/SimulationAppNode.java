@@ -100,6 +100,8 @@ public class SimulationAppNode {
 	
 	private static void displayStatistics(){
 		System.out.println("----------------------------------------------------");
+		System.out.println("QUANTITY OF AGENTS RUNNING IN THIS NODE");
+		System.out.println(remoteSimulation.agentsRunning());
 		System.out.println("AGENTS RUNNING IN THIS NODE");
 		for(Agent agent: remoteSimulation.getAgentsRunning())
 			System.out.println(agent);

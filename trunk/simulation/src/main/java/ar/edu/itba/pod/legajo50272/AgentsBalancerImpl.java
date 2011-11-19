@@ -5,7 +5,6 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -159,7 +158,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 				if(!electionLive)
 					chooseCoordinator();
 			} else {
-				System.out.println("BULLY EVENT: "+ electionEvent.getNode()+","+electionEvent.getTimestamp());
 				eventsForElection.add(electionEvent);
 			}
 		}
@@ -168,7 +166,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	@Override
 	public void bullyOk(NodeInformation node) throws RemoteException {
 		electionLive = false;
-		System.out.println("BULLY OK: " + node);
 	}
 
 	@Override
@@ -264,24 +261,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 			randomNodeAgentsTransfer.runAgentsOnNode(Arrays.asList(agent));		
 	}
 	
-	public void moveAgents(int numberOfAgents){ 
-		try {
-			List<NodeAgent> agentsToMove = node.stopAndGet(numberOfAgents);
-			for(NodeAgent nodeAgent: agentsToMove)
-				System.out.println("AGENT TO MOVE: "+nodeAgent.node()+" "+nodeAgent.agent());
-			
-			List<NodeInformation> clusterNodes = new ArrayList<NodeInformation>(node.getConnectedNodes());
-			NodeInformation selectedNode = clusterNodes.get((int) Math.floor(Math.random() * clusterNodes.size()));
-			System.out.println("SELECTEDNODE: "+selectedNode);
-			
-			Registry registry = LocateRegistry.getRegistry(selectedNode.host(), selectedNode.port());
-			AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-			agentsTransfer.runAgentsOnNode(agentsToMove);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
 	public void balanceAgents(){
 		node.execute(new BalanceTask(this.node));				
 	}
@@ -289,7 +268,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	public class ChooseCoordinatorTask implements Runnable {
 		public void run(){
 			try {
-				System.out.println("CHOOSING");
 				electionLive = true;
 				bullyElection(node.getNodeInformation(), System.nanoTime());
 				// Wait until all the nodes received the election message
