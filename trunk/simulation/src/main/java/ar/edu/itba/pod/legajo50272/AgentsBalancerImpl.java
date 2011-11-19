@@ -185,80 +185,84 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	@Override
 	public void shutdown(List<NodeAgent> agents) throws RemoteException,
 			NotCoordinatorException {
-		if(!node.isCoordinator())
-			throw new NotCoordinatorException(chooseAndGetCoordinator());
-		
-		if(!agents.isEmpty() && !this.node.getConnectedNodes().isEmpty()) {
-			PriorityQueue<EnhancedNodeInformation> agentsQuantPerNode = new PriorityQueue<EnhancedNodeInformation>(10, new AscendantSort());
-			for(NodeInformation connectedNode: node.getConnectedNodes()){
-				if(!agents.get(0).node().equals(connectedNode)) {
-					Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
-					try {
-						AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-						EnhancedNodeInformation enhancedNode = new EnhancedNodeInformation(connectedNode, agentsTransfer.getNumberOfAgents());
-						agentsQuantPerNode.add(enhancedNode);
-					} catch (NotBoundException e) {
-						e.printStackTrace();
-					}				
-				}
-			}
-			
-			if(!agentsQuantPerNode.isEmpty()){
-				int assigned = 0;			
-				while(assigned < agents.size()) {
-					EnhancedNodeInformation enhancedNode = agentsQuantPerNode.remove();
-					NodeInformation nodeInformation = enhancedNode.getNodeInformation();
-					int agentsQuant = enhancedNode.getAgentsQuant();
-					
-					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
-					try {
-						AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-						agentsTransfer.runAgentsOnNode(Arrays.asList(agents.get(assigned)));
-						assigned++;
-						agentsQuant++;
-						enhancedNode.setAgentsQuant(agentsQuant);
-						agentsQuantPerNode.add(enhancedNode);
-					} catch (NotBoundException e) {
+		synchronized (this) {
+			if(!node.isCoordinator())
+				throw new NotCoordinatorException(chooseAndGetCoordinator());
+				
+			if(!agents.isEmpty() && !this.node.getConnectedNodes().isEmpty()) {
+				PriorityQueue<EnhancedNodeInformation> agentsQuantPerNode = new PriorityQueue<EnhancedNodeInformation>(10, new AscendantSort());
+				for(NodeInformation connectedNode: node.getConnectedNodes()){
+					if(!agents.get(0).node().equals(connectedNode)) {
+						Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+						try {
+							AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+							EnhancedNodeInformation enhancedNode = new EnhancedNodeInformation(connectedNode, agentsTransfer.getNumberOfAgents());
+							agentsQuantPerNode.add(enhancedNode);
+						} catch (NotBoundException e) {
 							e.printStackTrace();
+						}				
+					}
+				}
+				
+				if(!agentsQuantPerNode.isEmpty()){
+					int assigned = 0;			
+					while(assigned < agents.size()) {
+						EnhancedNodeInformation enhancedNode = agentsQuantPerNode.remove();
+						NodeInformation nodeInformation = enhancedNode.getNodeInformation();
+						int agentsQuant = enhancedNode.getAgentsQuant();
+						
+						Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+						try {
+							AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+							agentsTransfer.runAgentsOnNode(Arrays.asList(agents.get(assigned)));
+							assigned++;
+							agentsQuant++;
+							enhancedNode.setAgentsQuant(agentsQuant);
+							agentsQuantPerNode.add(enhancedNode);
+						} catch (NotBoundException e) {
+								e.printStackTrace();
+						}
 					}
 				}
 			}
-		}		
+		}
 	}
 
 	@Override
 	public void addAgentToCluster(NodeAgent agent) throws RemoteException,
 			NotCoordinatorException {
-		if(!node.isCoordinator())
-			throw new NotCoordinatorException(chooseAndGetCoordinator());
-		
-		int min = 0;
-		AgentsTransfer randomNodeAgentsTransfer = null;
-		try {
-			NodeInformation randomNode = node.getConnectedNodes().iterator().next();
-			Registry registry = LocateRegistry.getRegistry(randomNode.host(), randomNode.port());
-			randomNodeAgentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-			min = randomNodeAgentsTransfer.getNumberOfAgents();
-		} catch (NotBoundException e) {
-			e.printStackTrace();
-		}	
-		
-		boolean assigned = false;
-		for(NodeInformation connectedNode: node.getConnectedNodes()){
-			Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+		synchronized (this) {		
+			if(!node.isCoordinator())
+				throw new NotCoordinatorException(chooseAndGetCoordinator());
+			
+			int min = 0;
+			AgentsTransfer randomNodeAgentsTransfer = null;
 			try {
-				AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-				if(agentsTransfer.getNumberOfAgents() < min){
-					agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
-					assigned = true;
-					break;
-				}
+				NodeInformation randomNode = node.getConnectedNodes().iterator().next();
+				Registry registry = LocateRegistry.getRegistry(randomNode.host(), randomNode.port());
+				randomNodeAgentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+				min = randomNodeAgentsTransfer.getNumberOfAgents();
 			} catch (NotBoundException e) {
 				e.printStackTrace();
+			}	
+			
+			boolean assigned = false;
+			for(NodeInformation connectedNode: node.getConnectedNodes()){
+				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
+				try {
+					AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+					if(agentsTransfer.getNumberOfAgents() < min){
+						agentsTransfer.runAgentsOnNode(Arrays.asList(agent));
+						assigned = true;
+						break;
+					}
+				} catch (NotBoundException e) {
+					e.printStackTrace();
+				}
 			}
+			if(!assigned)
+				randomNodeAgentsTransfer.runAgentsOnNode(Arrays.asList(agent));
 		}
-		if(!assigned)
-			randomNodeAgentsTransfer.runAgentsOnNode(Arrays.asList(agent));		
 	}
 	
 	public void balanceAgents(){

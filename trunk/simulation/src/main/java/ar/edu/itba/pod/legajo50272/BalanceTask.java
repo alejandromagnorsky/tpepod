@@ -30,53 +30,55 @@ public class BalanceTask implements Runnable {
 	@Override
 	public void run() {
 		try {
-			double totalAgents = 0;
-			for(NodeInformation connectedNode: node.getConnectedNodes()){
-				Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
-				AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-				EnhancedNodeInformation enhancedNode = new EnhancedNodeInformation(connectedNode, agentsTransfer.getNumberOfAgents());
-				agentsQuantPerNode.add(enhancedNode);		
-				totalAgents += enhancedNode.getAgentsQuant();
-			}
-			if(totalAgents > 1) {
-				int n = (int)Math.ceil(totalAgents/agentsQuantPerNode.size());
-				// Quantity of nodes that must have n agents after the balancing
-				int a = (int)totalAgents - agentsQuantPerNode.size() * (n - 1);
-				System.out.println("A: "+ a);	
-				
-				while(!agentsQuantPerNode.isEmpty() && agentsQuantPerNode.peek().getAgentsQuant() >= n) {
-					EnhancedNodeInformation enhancedNode = agentsQuantPerNode.remove();
-					NodeInformation nodeInformation = enhancedNode.getNodeInformation();
-					int agentsQuant = enhancedNode.getAgentsQuant();
-						
-					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+			synchronized (this.node.getAgentsBalancer()) {			
+				double totalAgents = 0;
+				for(NodeInformation connectedNode: node.getConnectedNodes()){
+					Registry registry = LocateRegistry.getRegistry(connectedNode.host(), connectedNode.port());
 					AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-					if(a > 0) {
-						a--;
-						agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - n));
-					} else {
-						agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - (n - 1)));
-					}
+					EnhancedNodeInformation enhancedNode = new EnhancedNodeInformation(connectedNode, agentsTransfer.getNumberOfAgents());
+					agentsQuantPerNode.add(enhancedNode);		
+					totalAgents += enhancedNode.getAgentsQuant();
 				}
-				
-				while(!agentsQuantPerNode.isEmpty())
-					nodesToReceiveAgents.add(agentsQuantPerNode.remove());
-				
-				for(int i = nodesToReceiveAgents.size() - 1; i >= 0; i--) {
-					EnhancedNodeInformation enhancedNode = nodesToReceiveAgents.get(i);
-					NodeInformation nodeInformation = enhancedNode.getNodeInformation();
-					int agentsQuant = enhancedNode.getAgentsQuant();
+				if(totalAgents > 1) {
+					int n = (int)Math.ceil(totalAgents/agentsQuantPerNode.size());
+					// Quantity of nodes that must have n agents after the balancing
+					int a = (int)totalAgents - agentsQuantPerNode.size() * (n - 1);
+					System.out.println("A: "+ a);	
 					
-					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
-					AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-					int min = Math.min(agentsToMove.size(), n - agentsQuant);
-					for(int j = 0; j < min; j++)
-						agentsForNode.add(agentsToMove.remove());
-					agentsTransfer.runAgentsOnNode(agentsForNode);
-					agentsForNode.clear();
-				}				
+					while(!agentsQuantPerNode.isEmpty() && agentsQuantPerNode.peek().getAgentsQuant() >= n) {
+						EnhancedNodeInformation enhancedNode = agentsQuantPerNode.remove();
+						NodeInformation nodeInformation = enhancedNode.getNodeInformation();
+						int agentsQuant = enhancedNode.getAgentsQuant();
+							
+						Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+						AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+						if(a > 0) {
+							a--;
+							agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - n));
+						} else {
+							agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - (n - 1)));
+						}
+					}
+					
+					while(!agentsQuantPerNode.isEmpty())
+						nodesToReceiveAgents.add(agentsQuantPerNode.remove());
+					
+					for(int i = nodesToReceiveAgents.size() - 1; i >= 0; i--) {
+						EnhancedNodeInformation enhancedNode = nodesToReceiveAgents.get(i);
+						NodeInformation nodeInformation = enhancedNode.getNodeInformation();
+						int agentsQuant = enhancedNode.getAgentsQuant();
+						
+						Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
+						AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
+						int min = Math.min(agentsToMove.size(), n - agentsQuant);
+						for(int j = 0; j < min; j++)
+							agentsForNode.add(agentsToMove.remove());
+						agentsTransfer.runAgentsOnNode(agentsForNode);
+						agentsForNode.clear();
+					}				
+				}
+				System.out.println("BALANCED");
 			}
-			System.out.println("BALANCED");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}				
