@@ -172,7 +172,6 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	}
 	
 	public boolean isCoordinator() {
-		NodeInformation coordinator = ((AgentsBalancerImpl)agentsBalancer).getCoordinator();
-		return coordinator != null && coordinator.equals(getNodeInformation());
+		return ((AgentsBalancerImpl)agentsBalancer).isCoordinator();
 	}
 }
