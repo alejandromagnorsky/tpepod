@@ -313,23 +313,19 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 	}	
 	
 	public synchronized NodeInformation chooseAndGetCoordinator(){
-		if(coordinator == null) {
-			chooseCoordinator();
-			try {
-				chooseCoordinatorLatch.await();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+		try {
+			if(coordinator == null || !this.node.getConnectedNodes().contains(coordinator)) {
+				chooseCoordinator();
+				chooseCoordinatorLatch.await();				
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		return coordinator;
 	}
 	
-	public NodeInformation getCoordinator(){
-		return coordinator;
-	}
-	
-	public void setCoordinator(NodeInformation coordinator) {
-		this.coordinator = coordinator;
+	public boolean isCoordinator(){
+		return coordinator != null && coordinator.equals(this.node.getNodeInformation());
 	}
 	
 	public class AscendantSort implements Comparator<EnhancedNodeInformation> {
