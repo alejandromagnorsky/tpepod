@@ -16,6 +16,7 @@ import ar.edu.itba.balance.api.AgentsBalancer;
 import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.balance.api.NodeAgent;
 import ar.edu.itba.balance.api.NotCoordinatorException;
+import ar.edu.itba.event.EventInformation;
 import ar.edu.itba.event.RemoteEventDispatcher;
 import ar.edu.itba.node.Node;
 import ar.edu.itba.node.NodeInformation;
@@ -113,7 +114,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 	public void start(final Duration duration) {
 		synchronized (this) {
 			super.start(duration);
-		}		
+		}
 	}
 	
 	@Override
@@ -129,7 +130,6 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 		}
 	}
 	
-	// Considerar el caso en que se vaya el coordinador
 	private void shutdown(NodeInformation coordinator) {
 		try {
 			Registry registry = LocateRegistry.getRegistry(coordinator.host(), coordinator.port());
@@ -144,8 +144,7 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	}
-	
+	}	
 	
 	public void execute(Runnable task) {
 		executor.execute(task);
@@ -161,6 +160,10 @@ public class RemoteSimulation extends LocalSimulation implements Simulation,
 
 	public List<NodeAgent> stopAndGet(int numberOfAgents) throws RemoteException {
 		return agentsTransfer.stopAndGet(numberOfAgents);
+	}
+	
+	public RemoteEventDispatcher getRemoteEventDispatcher() {
+		return remoteEventDispatcher;
 	}
 
 	public void balanceAgents() {

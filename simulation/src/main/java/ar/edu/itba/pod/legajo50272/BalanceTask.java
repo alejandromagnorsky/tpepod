@@ -51,14 +51,11 @@ public class BalanceTask implements Runnable {
 						
 					Registry registry = LocateRegistry.getRegistry(nodeInformation.host(), nodeInformation.port());
 					AgentsTransfer agentsTransfer = (AgentsTransfer) registry.lookup(Node.AGENTS_TRANSFER);
-					if(agentsQuant > n){
+					if(a > 0) {
 						a--;
-						agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - n));					
-					} else if(agentsQuant == n) {
-						if(a > 0)
-							a--;
-						else
-							agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - 1));
+						agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - n));
+					} else {
+						agentsToMove.addAll(agentsTransfer.stopAndGet(agentsQuant - (n - 1)));
 					}
 				}
 				

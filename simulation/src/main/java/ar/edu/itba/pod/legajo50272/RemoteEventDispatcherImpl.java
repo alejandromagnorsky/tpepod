@@ -108,8 +108,10 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 							for(Integer lastMessageSended: indexPerNode.values())
 								if(min == -1 || lastMessageSended < min)
 									min = lastMessageSended;
-							for(int i = 0; i < min; i++)
-								events.remove(0);
+							for(int i = 0; i < min; i++){
+								EventInformation event = events.remove(0);
+								eventsSet.remove(event);								
+							}
 							for(Entry<NodeInformation, Integer> entry: indexPerNode.entrySet())
 								entry.setValue(entry.getValue() - min);							
 						}
@@ -144,7 +146,9 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 			// Add to the queue of events to broadcast
 			this.eventsToSend.offer(event);
 			// Publish the event locally
-			super.publish(event.source(), event.event());
+			synchronized (this) {
+				super.publish(event.source(), event.event());	
+			}			
 			return true;
 		}
 		return false;

@@ -11,6 +11,7 @@ import java.util.concurrent.BlockingQueue;
 
 import ar.edu.itba.balance.api.AgentsTransfer;
 import ar.edu.itba.balance.api.NodeAgent;
+import ar.edu.itba.event.EventInformation;
 import ar.edu.itba.event.RemoteEventDispatcher;
 import ar.edu.itba.node.Node;
 import ar.edu.itba.node.api.NodeStatistics;
@@ -28,8 +29,7 @@ public class AgentsTransferImpl extends UnicastRemoteObject implements AgentsTra
 		super();
 		this.node = node;
 	}
-	
-	// ¿Coordinacion entre nodos?
+		
 	@Override
 	public void runAgentsOnNode(List<NodeAgent> agents) throws RemoteException {
 		for(NodeAgent nodeAgent : agents){
@@ -37,11 +37,23 @@ public class AgentsTransferImpl extends UnicastRemoteObject implements AgentsTra
 				Registry registry = LocateRegistry.getRegistry(nodeAgent.node().host(), nodeAgent.node().port());
 				try {
 					RemoteEventDispatcher remoteEventDispatcher = (RemoteEventDispatcher) registry.lookup(Node.DISTRIBUTED_EVENT_DISPATCHER);
-					BlockingQueue<Object> agentEvents = remoteEventDispatcher.moveQueueFor(nodeAgent.agent());
-					((MultiThreadEventDispatcher)node.dispatcher()).setAgentQueue(nodeAgent.agent(), agentEvents);
+					synchronized (this.node.getRemoteEventDispatcher()) {					
+						// Get the events that the other node has processed										
+						for(EventInformation newEvent: remoteEventDispatcher.newEventsFor(this.node.getNodeInformation()))
+							this.node.getRemoteEventDispatcher().publish(newEvent);
+						
+						// Send the events that the other node hasn't processed
+						for(EventInformation event: this.node.getRemoteEventDispatcher().newEventsFor(nodeAgent.node()))
+							remoteEventDispatcher.publish(event);
+					
+						BlockingQueue<Object> agentEvents = remoteEventDispatcher.moveQueueFor(nodeAgent.agent());
+						((MultiThreadEventDispatcher)node.dispatcher()).setAgentQueue(nodeAgent.agent(), agentEvents);
+					}
 				} catch (NotBoundException e) {
 					e.printStackTrace();
-				}			
+				} catch (Exception e){
+					e.printStackTrace();
+				}
 			}
 		}
 		
