@@ -86,9 +86,8 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 			}
 		}
 	}
-	
-	
-	public class CleanerTask implements Runnable {
+		
+	private class CleanerTask implements Runnable {
 
 		@Override
 		public void run() {
@@ -125,8 +124,6 @@ public class RemoteEventDispatcherImpl extends MultiThreadEventDispatcher implem
 		}		
 	}
 	
-	
-
 	public RemoteEventDispatcherImpl(RemoteSimulation node)
 			throws RemoteException {
 		super();

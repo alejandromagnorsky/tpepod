@@ -87,7 +87,6 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		
 	}
 	
-	
 	private class ElectionBroadcastTask implements Runnable {
 
 		@Override
@@ -269,13 +268,13 @@ public class AgentsBalancerImpl extends UnicastRemoteObject implements
 		node.execute(new BalanceTask(this.node));				
 	}
 	
-	public class ChooseCoordinatorTask implements Runnable {
+	private class ChooseCoordinatorTask implements Runnable {
 		public void run(){
 			try {
 				electionLive = true;
 				bullyElection(node.getNodeInformation(), System.nanoTime());
 				// Wait until all the nodes received the election message
-				Thread.sleep(4000);
+				Thread.sleep(10000);
 				// Check if any node has bullied this node
 				if(electionLive){
 					bullyCoordinator(node.getNodeInformation(), System.nanoTime());

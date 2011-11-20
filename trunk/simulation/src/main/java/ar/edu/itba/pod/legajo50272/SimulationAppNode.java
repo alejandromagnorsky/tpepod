@@ -31,13 +31,14 @@ public class SimulationAppNode {
 	private static Resource copper;
 
 	public static void main(String[] args) {
-		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(24));
+		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(6));
 		String line, values[];
 
 		gold = new Resource("Mineral", "Gold");
 		copper = new Resource("Mineral", "Copper");
 		steel = new Resource("Alloy", "Steel");
-		loadFile();
+		System.out.println("Enter the path of the file wich contains the network configuration");
+		loadFile(readLine());
 
 		if (host == null || port == null) {
 			System.out.println("Enter your host and your port (host:port)");
@@ -176,10 +177,12 @@ public class SimulationAppNode {
 		return null;
 	}
 
-	private static void loadFile() {
+	private static void loadFile(String line) {
 		Properties properties = new Properties();
+		if(line == null || line.isEmpty())
+			line = "src/main/resources/config.properties";
 		try {
-			properties.load(new FileInputStream("src/main/resources/config.properties"));
+			properties.load(new FileInputStream(line));
 			host = properties.getProperty("host");
 			port = Integer.valueOf(properties.getProperty("port"));
 			serverHost = properties.getProperty("serverHost");
