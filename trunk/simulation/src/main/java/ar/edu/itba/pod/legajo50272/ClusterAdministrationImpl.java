@@ -5,7 +5,6 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -79,9 +78,8 @@ public class ClusterAdministrationImpl extends UnicastRemoteObject implements
 				ClusterAdministration cluster = (ClusterAdministration) registry.lookup(Node.CLUSTER_COMUNICATION);
 				cluster.addNewNode(nodeInformation);
 			}
-			return connectedNodes();
 		}
-		return new HashSet<NodeInformation>();
+		return connectedNodes();
 	}
 
 	@Override
