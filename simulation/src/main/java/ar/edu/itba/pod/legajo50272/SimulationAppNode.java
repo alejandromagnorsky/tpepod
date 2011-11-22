@@ -31,7 +31,7 @@ public class SimulationAppNode {
 	private static Resource copper;
 
 	public static void main(String[] args) {
-		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(6));
+		TimeMapper timeMapper = TimeMappers.oneSecondEach(Duration.standardHours(24));
 		String line, values[];
 
 		gold = new Resource("Mineral", "Gold");
